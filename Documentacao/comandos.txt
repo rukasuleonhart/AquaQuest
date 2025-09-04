@@ -1,0 +1,4 @@
+TERMINAL
+
+Gerando estrutura React Native
+$ npx create-expo-app .
