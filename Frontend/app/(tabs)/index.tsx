@@ -9,13 +9,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useHistory } from "../components/HistoryContext"; // 👈 importa o hook
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_WATER_LEVEL = 1;
 const MIN_WATER_LEVEL = 0;
 
 export default function Index() {
-  const waterLevel = useRef(new Animated.Value(0.8)).current; // come�a quase cheio
+  const { addToHistory } = useHistory(); // 👈 pega função do contexto
+
+  const waterLevel = useRef(new Animated.Value(0.8)).current; // começa quase cheio
   const [currentLevel, setCurrentLevel] = useState(0.8);
   const gestureStartLevel = useRef(0);
   const INSTANT_FILL_DURATION = 300;
@@ -70,13 +73,16 @@ export default function Index() {
             toValue: MAX_WATER_LEVEL,
             duration: INSTANT_FILL_DURATION,
             useNativeDriver: false,
-          }).start(() => setCurrentLevel(MAX_WATER_LEVEL));
+          }).start(() => {
+            setCurrentLevel(MAX_WATER_LEVEL);
+            addToHistory("Encheu", Math.round(MAX_WATER_LEVEL * 500)); // 👈 salva histórico
+          });
         }
       },
     })
   ).current;
 
-  // Interpola��o da �gua
+  // Interpolação da água
   const waterHeight = waterLevel.interpolate({
     inputRange: [0, 1],
     outputRange: [0, cupHeight * 0.85],
@@ -93,14 +99,17 @@ export default function Index() {
   });
   const waterAmount = Math.round(currentLevel * 500); // de 0 a 500 mL
 
-  // Fun��o para beber (esvaziar)
+  // Função para beber (esvaziar)
   const handleDrink = () => {
     Animated.timing(waterLevel, {
       toValue: 0,
       duration: 2000, // 2s para esvaziar
       easing: Easing.ease,
       useNativeDriver: false,
-    }).start(() => setCurrentLevel(0));
+    }).start(() => {
+      setCurrentLevel(0);
+      addToHistory("Bebeu", waterAmount); // 👈 salva histórico
+    });
   };
 
   return (
@@ -113,7 +122,7 @@ export default function Index() {
       </Animated.Text>
 
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-        {/* R�gua de marca��o lateral */}
+        {/* Régua de marcação lateral */}
         <View style={styles.ruler}>
           {[500, 400, 300, 200, 100, 0].map((mark) => (
             <Text key={mark} style={styles.rulerText}>
@@ -122,12 +131,12 @@ export default function Index() {
           ))}
         </View>
 
-        {/* Copo com leve formato de vidro */}
+        {/* Copo */}
         <View
           style={[styles.cup, { width: cupWidth, height: cupHeight }]}
           {...panResponder.panHandlers}
         >
-          {/* �gua */}
+          {/* Água */}
           <Animated.View
             style={[
               styles.water,
@@ -160,7 +169,7 @@ export default function Index() {
         </View>
       </View>
 
-      {/* Bot�o Beber */}
+      {/* Botão Beber */}
       <AnimatedTouchable
         style={[styles.drinkButton, { backgroundColor: waterColor }]}
         onPress={handleDrink}
@@ -171,7 +180,7 @@ export default function Index() {
   );
 }
 
-// Animated Touchable para animar cor junto com a �gua
+// Animated Touchable para animar cor junto com a água
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 const styles = StyleSheet.create({
