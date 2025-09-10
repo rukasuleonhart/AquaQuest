@@ -35,7 +35,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="quest"
           options={{
-            title: "Quests",
+            title: "Missões",
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="sword" size={24} color={color} />
             ),
@@ -44,7 +44,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="i"
           options={{
-            title: "Eu",
+            title: "Perfil",
             tabBarIcon: ({ color }) => (
               <Ionicons name="person" size={24} color={color} />
             ),

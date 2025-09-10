@@ -36,15 +36,13 @@ export default function RPGQuestsScreen() {
 
       if (q.unit === "mL") {
         if (q.type === "daily") {
-          // Incremental: cada diária só pega o que sobra do histórico
           const totalDrank = history
             .filter(h => h.action === "Bebeu")
             .reduce((sum, h) => sum + h.amount, 0);
 
           progress = Math.min(Math.max(totalDrank - consumedDaily, 0), q.target);
-          consumedDaily += progress; // atualiza o total usado para a próxima diária
+          consumedDaily += progress; 
         } else {
-          // Semanais e mensais acumulam todo o histórico
           const totalDrank = history
             .filter(h => h.action === "Bebeu")
             .reduce((sum, h) => sum + h.amount, 0);
@@ -52,16 +50,14 @@ export default function RPGQuestsScreen() {
         }
       } else if (q.unit === "missions") {
         if (q.type === "weekly") {
-          // Quantos dias tiveram todas as diárias completadas
           const daysWithAllDailies = Math.floor(
             history.filter(h => h.action === "Bebeu").reduce((sum, h) => sum + h.amount, 0) / 600
-          ); // 3 diárias x 200 mL
+          ); 
           progress = Math.min(daysWithAllDailies, q.target);
         } else if (q.type === "monthly") {
-          // Quantas semanas tiveram todas as diárias completadas
           const weeksWithAllDailies = Math.floor(
             history.filter(h => h.action === "Bebeu").reduce((sum, h) => sum + h.amount, 0) / (600 * 7)
-          ); // 7 dias x 600 mL
+          ); 
           progress = Math.min(weeksWithAllDailies, q.target);
         }
       }
@@ -81,6 +77,10 @@ export default function RPGQuestsScreen() {
           <Text style={styles.questTitle}>{item.title}</Text>
         </View>
         <Text style={styles.questDescription}>{item.description}</Text>
+
+        {/* XP sempre visível */}
+        <Text style={styles.xpText}>Recompensa: +{item.reward} XP 🏆</Text>
+
         <View style={styles.progressBarBackground}>
           <View
             style={[
@@ -95,7 +95,7 @@ export default function RPGQuestsScreen() {
         </Text>
         {completed && (
           <Text style={styles.completedText}>
-            Missão Concluída! +{item.reward} XP 🏆
+            Missão Concluída!
           </Text>
         )}
       </View>
@@ -148,7 +148,8 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   icon: { fontSize: 28, marginRight: 10 },
   questTitle: { fontSize: 18, fontWeight: "700", color: "#1E40AF" },
-  questDescription: { fontSize: 14, color: "#6B7280", marginBottom: 10 },
+  questDescription: { fontSize: 14, color: "#6B7280", marginBottom: 6 },
+  xpText: { fontSize: 14, color: "#1D4ED8", fontWeight: "600", marginBottom: 6 },
   progressBarBackground: { height: 12, backgroundColor: "#E0E7FF", borderRadius: 10, overflow: "hidden" },
   progressBarFill: { height: 12, backgroundColor: "#3B82F6" },
   progressText: { fontSize: 13, color: "#374151", marginTop: 4, marginBottom: 10, textAlign: "right" },
