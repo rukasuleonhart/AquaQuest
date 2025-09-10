@@ -4,22 +4,30 @@ import { useHistory } from "../components/HistoryContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
+// Tipagem das quests
 type Quest = {
   id: string;
   title: string;
   description: string;
-  target: number;
-  reward: number;
-  icon: string;
+  target: number; // meta da missão (ex: 800 mL)
+  reward: number; // XP de recompensa
+  icon: string; // emoji ou ícone da missão
   type: "daily" | "weekly" | "monthly";
-  unit: "mL" | "missions";
+  unit: "mL" | "missions"; // unidade de progresso
 };
 
+// Extensão da Quest para incluir progresso calculado
 type QuestWithProgress = Quest & { progress: number };
 
+/**
+ * Componente principal da tela de Missões RPG
+ * Mostra as missões diárias, semanais e mensais com progresso
+ * baseado no histórico de consumo de água.
+ */
 export default function RPGQuestsScreen() {
-  const { history } = useHistory();
+  const { history } = useHistory(); // histórico de ações (Bebeu/Encheu)
 
+  // Lista de quests pré-definidas
   const quests: Quest[] = [
     { id: "d1", title: "Poção da Manhã", description: "Beber 800 mL", target: 800, reward: 10, icon: "🧪", type: "daily", unit: "mL" },
     { id: "d2", title: "Escudo da Tarde", description: "Beber 800 mL", target: 800, reward: 15, icon: "🛡️", type: "daily", unit: "mL" },
@@ -28,36 +36,38 @@ export default function RPGQuestsScreen() {
     { id: "m1", title: "Maratona da Hidratação", description: "Beber 32L de água no mês", target: 32000, reward: 200, icon: "🌊", type: "monthly", unit: "mL" },
   ];
 
+  /**
+   * Calcula o progresso de cada missão baseado no histórico
+   * - Para quests de mL, soma a quantidade bebida
+   * - Para quests de "missions", calcula quantos dias/semanais completos foram realizados
+   * O useMemo evita recalcular desnecessariamente se o histórico não mudou.
+   */
   const questsProgress: QuestWithProgress[] = useMemo(() => {
-    let consumedDaily = 0; // quantidade já usada para completar diárias
+    let consumedDaily = 0; // controla quantidade consumida para diárias
+
+    // total de água bebida
+    const totalDrank = history
+      .filter(h => h.action === "Bebeu")
+      .reduce((sum, h) => sum + h.amount, 0);
 
     return quests.map(q => {
       let progress = 0;
 
       if (q.unit === "mL") {
         if (q.type === "daily") {
-          const totalDrank = history
-            .filter(h => h.action === "Bebeu")
-            .reduce((sum, h) => sum + h.amount, 0);
-
+          // Para diárias, subtrai quantidade já contabilizada
           progress = Math.min(Math.max(totalDrank - consumedDaily, 0), q.target);
-          consumedDaily += progress; 
+          consumedDaily += progress;
         } else {
-          const totalDrank = history
-            .filter(h => h.action === "Bebeu")
-            .reduce((sum, h) => sum + h.amount, 0);
           progress = Math.min(totalDrank, q.target);
         }
       } else if (q.unit === "missions") {
+        // Exemplo: contagem de dias ou semanas completas
         if (q.type === "weekly") {
-          const daysWithAllDailies = Math.floor(
-            history.filter(h => h.action === "Bebeu").reduce((sum, h) => sum + h.amount, 0) / 600
-          ); 
+          const daysWithAllDailies = Math.floor(totalDrank / 600);
           progress = Math.min(daysWithAllDailies, q.target);
         } else if (q.type === "monthly") {
-          const weeksWithAllDailies = Math.floor(
-            history.filter(h => h.action === "Bebeu").reduce((sum, h) => sum + h.amount, 0) / (600 * 7)
-          ); 
+          const weeksWithAllDailies = Math.floor(totalDrank / (600 * 7));
           progress = Math.min(weeksWithAllDailies, q.target);
         }
       }
@@ -66,21 +76,28 @@ export default function RPGQuestsScreen() {
     });
   }, [history]);
 
+  /**
+   * Renderiza uma missão individual com barra de progresso, ícone e XP
+   */
   const renderQuest = (item: QuestWithProgress) => {
     const completed = item.progress >= item.target;
     const progressPercent = Math.round((item.progress / item.target) * 100);
 
     return (
       <View style={[styles.card, completed && styles.cardCompleted]} key={item.id}>
+        {/* Cabeçalho com ícone e título */}
         <View style={styles.cardHeader}>
           <Text style={styles.icon}>{item.icon}</Text>
           <Text style={styles.questTitle}>{item.title}</Text>
         </View>
+
+        {/* Descrição */}
         <Text style={styles.questDescription}>{item.description}</Text>
 
-        {/* XP sempre visível */}
+        {/* XP */}
         <Text style={styles.xpText}>Recompensa: +{item.reward} XP 🏆</Text>
 
+        {/* Barra de progresso */}
         <View style={styles.progressBarBackground}>
           <View
             style={[
@@ -93,15 +110,17 @@ export default function RPGQuestsScreen() {
         <Text style={styles.progressText}>
           {item.progress}/{item.target} {item.unit === "missions" ? "missões" : "mL"}
         </Text>
-        {completed && (
-          <Text style={styles.completedText}>
-            Missão Concluída!
-          </Text>
-        )}
+
+        {/* Texto de conclusão */}
+        {completed && <Text style={styles.completedText}>Missão Concluída!</Text>}
       </View>
     );
   };
 
+  /**
+   * Renderiza uma seção de missões (Diárias, Semanais, Mensais)
+   * com FlatList horizontal paginada
+   */
   const renderSection = (title: string, data: QuestWithProgress[]) => (
     <>
       <Text style={styles.sectionTitle}>{title}</Text>

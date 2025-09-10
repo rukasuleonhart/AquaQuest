@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Dimensions, FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 
+// Obtém a largura da tela do dispositivo, usada para calcular o tamanho da barra de XP
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
+// Paleta de cores reutilizável
 const PALETTE = {
   lightBlue: "#E6F0FF",
   waterStrong: "rgba(0,122,255,0.9)",
@@ -13,6 +15,7 @@ const PALETTE = {
   incomplete: "#999",
 };
 
+// Tipagem do perfil do usuário
 type Profile = {
   name: string;
   age: number;
@@ -23,6 +26,7 @@ type Profile = {
   xpToNext: number;
 };
 
+// Tipagem de conquistas
 type Achievement = {
   id: string;
   title: string;
@@ -30,16 +34,23 @@ type Achievement = {
   completed: boolean;
 };
 
+/**
+ * Componente que exibe a barra de XP do jogador.
+ * Mostra o nível atual, XP atual, XP necessário para o próximo nível
+ * e a barra de progresso proporcional.
+ */
 function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: number; level: number }) {
+  // Calcula o progresso da barra (entre 0 e 1)
   const progress = useMemo(() => {
     const denom = xpToNext <= 0 ? 1 : xpToNext;
     return Math.max(0, Math.min(1, currentXP / denom));
   }, [currentXP, xpToNext]);
 
-  const width = SCREEN_WIDTH - 64;
+  const width = SCREEN_WIDTH - 64; // largura da barra com margem
 
   return (
     <View style={styles.xpContainer}>
+      {/* Cabeçalho com nível e XP */}
       <View style={styles.xpHeader}>
         <Text style={styles.levelText}>Nível {level}</Text>
         <Text style={styles.xpText}>
@@ -47,18 +58,20 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
         </Text>
       </View>
 
+      {/* Barra de XP */}
       <View style={[styles.xpBarBackground, { width }]}>
         <View
           style={[
             styles.xpBarFill,
             {
-              width: width * progress,
+              width: width * progress, // Preenche proporcional ao progresso
               backgroundColor: PALETTE.waterStrong,
             },
           ]}
         />
       </View>
 
+      {/* Texto mostrando quanto falta para o próximo nível */}
       <Text style={styles.xpMissingText}>
         {Math.max(0, xpToNext - currentXP)} XP para o próximo nível
       </Text>
@@ -66,6 +79,10 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
   );
 }
 
+/**
+ * Componente que exibe a lista de conquistas do jogador.
+ * Recebe um array de conquistas e indica se cada uma está completa.
+ */
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
@@ -76,10 +93,17 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.achievementItem}>
-            <Text style={[styles.achievementIcon, { color: item.completed ? PALETTE.complete : PALETTE.incomplete }]}>
+            {/* Ícone de conquista (checkbox) */}
+            <Text
+              style={[
+                styles.achievementIcon,
+                { color: item.completed ? PALETTE.complete : PALETTE.incomplete },
+              ]}
+            >
               {item.completed ? "✅" : "⬜"}
             </Text>
             <View style={styles.achievementInfo}>
+              {/* Título e descrição da conquista */}
               <Text style={styles.achievementName}>{item.title}</Text>
               <Text style={styles.achievementDescription}>{item.description}</Text>
             </View>
@@ -90,7 +114,12 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   );
 }
 
-export default function PerfilRPG() {
+/**
+ * Componente principal da tela de perfil.
+ * Permite editar informações do perfil, visualizar XP e conquistas.
+ */
+export default function Perfil() {
+  // Estado do perfil do usuário
   const [profile, setProfile] = useState<Profile>({
     name: "Olá, viajante",
     age: 24,
@@ -101,6 +130,7 @@ export default function PerfilRPG() {
     xpToNext: 100,
   });
 
+  // Lista de conquistas iniciais
   const achievements: Achievement[] = [
     { id: "1", title: "Primeiro Gole", description: "Beba água uma vez", completed: true },
     { id: "2", title: "Dia Produtivo", description: "Complete todas as missões diárias", completed: false },
@@ -111,11 +141,13 @@ export default function PerfilRPG() {
     <View style={styles.container}>
       <Text style={styles.title}>Perfil</Text>
 
+      {/* Card com informações do perfil e barra de XP */}
       <View style={styles.card}>
         <Text style={styles.name}>{profile.name}</Text>
 
         <View style={styles.row}>
           <View style={styles.infoColumn}>
+            {/* Campo de idade */}
             <Text style={styles.infoLabel}>Idade</Text>
             <TextInput
               style={styles.input}
@@ -124,6 +156,7 @@ export default function PerfilRPG() {
               onChangeText={(value) => setProfile((p) => ({ ...p, age: Number(value) || 0 }))}
             />
 
+            {/* Campo de peso */}
             <Text style={[styles.infoLabel, { marginTop: 12 }]}>Peso (kg)</Text>
             <TextInput
               style={styles.input}
@@ -132,6 +165,7 @@ export default function PerfilRPG() {
               onChangeText={(value) => setProfile((p) => ({ ...p, weightKg: Number(value) || 0 }))}
             />
 
+            {/* Campo de temperatura ambiente */}
             <Text style={[styles.infoLabel, { marginTop: 12 }]}>Temperatura °C</Text>
             <TextInput
               style={styles.input}
@@ -142,6 +176,7 @@ export default function PerfilRPG() {
           </View>
         </View>
 
+        {/* Barra de XP */}
         <XPBar currentXP={profile.currentXP} xpToNext={profile.xpToNext} level={profile.level} />
       </View>
 
@@ -151,6 +186,7 @@ export default function PerfilRPG() {
   );
 }
 
+// Estilos reutilizáveis
 const styles = StyleSheet.create({
   container: { flex: 1, paddingVertical: 20, backgroundColor: PALETTE.lightBlue },
   title: { fontSize: 28, fontWeight: "bold", color: PALETTE.text, textAlign: "center", marginBottom: 20 },
