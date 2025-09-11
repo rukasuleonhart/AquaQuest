@@ -1,47 +1,63 @@
-// Importando ícones das bibliotecas do Expo Vector Icons
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5"; // Ýcones da versão 5 do FontAwesome
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6"; // Ýcones da versão 6 do FontAwesome
-import Ionicons from "@expo/vector-icons/Ionicons"; // Ýcones da biblioteca Ionicons
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"; // Ýcones da MaterialCommunity
+// ---------------------------
+// Importando ícones de bibliotecas populares
+// ---------------------------
+// FontAwesome5: biblioteca de ícones FontAwesome versão 5
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+// FontAwesome6: biblioteca de ícones FontAwesome versão 6
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+// Ionicons: biblioteca de ícones da Ionicons
+import Ionicons from "@expo/vector-icons/Ionicons";
+// MaterialCommunityIcons: ícones da Material Design Community
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
-// Importando o componente de navegação em abas do Expo Router
+// ---------------------------
+// Importando componentes do Expo
+// ---------------------------
+// Componente de navegação em abas do Expo Router
 import { Tabs } from "expo-router";
 
-// Importando o provider de histórico, que provavelmente gerencia o estado global do histórico de ações do usuário
+// ---------------------------
+// Importando Contextos
+// ---------------------------
+// HistoryProvider: provedor de contexto que gerencia o histórico
+// de ações do usuário e disponibiliza esse estado globalmente
 import { HistoryProvider } from "../context/HistoryContext";
 
 /**
- * Componente principal de layout de abas do aplicativo.
- * Ele envolve todas as telas com o HistoryProvider para fornecer
- * o contexto de histórico em qualquer tela filha.
+ * Componente principal de layout com abas do aplicativo.
+ * Ele envolve todas as telas com o HistoryProvider, permitindo que
+ * qualquer tela filha acesse o contexto de histórico.
  */
 export default function TabsLayout() {
   return (
-    // Envolvendo as abas com o HistoryProvider para disponibilizar
-    // o contexto global de histórico em todas as telas
+    // HistoryProvider fornece o estado global de histórico
     <HistoryProvider>
       <Tabs
         screenOptions={{
-          // Cor do ícone ativo da aba
+          // Define a cor do ícone da aba quando está ativa
           tabBarActiveTintColor: "rgba(2, 136, 209, 0.95)",
-          // Cor do ícone inativo da aba
+          // Define a cor do ícone da aba quando está inativa
           tabBarInactiveTintColor: "#c3cfe2",
         }}
       >
-        {/* Tela principal - Aba "Beber" */}
+        {/* ---------------------------
+            Aba "Beber" - Tela principal
+            --------------------------- */}
         <Tabs.Screen
-          name="index" // Nome da rota
+          name="index" // Nome da rota (usado pelo router)
           options={{
-            headerShown: false,
-            title: "Beber", // Título exibido na aba
+            headerShown: false, // Esconde o cabeçalho da tela
+            title: "Beber",     // Título exibido na aba
             tabBarIcon: ({ color }) => (
-              // Ýcone da aba, que muda de cor dependendo do estado (ativo/inativo)
+              // Ícone da aba que muda de cor conforme estado (ativo/inativo)
               <FontAwesome6 name="glass-water" size={24} color={color} />
             ),
           }}
         />
 
-        {/* Tela de histórico - Aba "Historico" */}
+        {/* ---------------------------
+            Aba "Historico" - Tela de histórico
+            --------------------------- */}
         <Tabs.Screen
           name="history"
           options={{
@@ -53,7 +69,9 @@ export default function TabsLayout() {
           }}
         />
 
-        {/* Tela de missões - Aba "Missões" */}
+        {/* ---------------------------
+            Aba "Missões" - Tela de missões
+            --------------------------- */}
         <Tabs.Screen
           name="quest"
           options={{
@@ -65,7 +83,9 @@ export default function TabsLayout() {
           }}
         />
 
-        {/* Tela de perfil - Aba "Perfil" */}
+        {/* ---------------------------
+            Aba "Perfil" - Tela de perfil
+            --------------------------- */}
         <Tabs.Screen
           name="profile"
           options={{
