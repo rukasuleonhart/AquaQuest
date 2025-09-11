@@ -52,7 +52,7 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
     <View style={styles.xpContainer}>
       {/* CabeÃ§alho com nÃ­vel e XP */}
       <View style={styles.xpHeader}>
-        <Text style={styles.levelText}>NÃ­vel {level}</Text>
+        <Text style={styles.levelText}>Ní­vel {level}</Text>
         <Text style={styles.xpText}>
           {currentXP} XP / {xpToNext} XP
         </Text>
@@ -86,7 +86,7 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
-      <Text style={styles.achievementTitle}>ðŸ�† Conquistas</Text>
+      <Text style={styles.achievementTitle}>🌠Conquistas</Text>
 
       <FlatList
         data={achievements}
@@ -100,7 +100,7 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
                 { color: item.completed ? PALETTE.complete : PALETTE.incomplete },
               ]}
             >
-              {item.completed ? "âœ…" : "â¬œ"}
+              {item.completed ? "✅" : "⬜"}
             </Text>
             <View style={styles.achievementInfo}>
               {/* TÃ­tulo e descriÃ§Ã£o da conquista */}
