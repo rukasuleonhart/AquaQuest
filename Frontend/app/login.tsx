@@ -5,5 +5,5 @@ export default function LoginScreen() {
         <View>
             <Text>Pagina de Login</Text>
         </View>
-    )
+    );
 }

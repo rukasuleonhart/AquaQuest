@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 // Importa o hook para salvar histórico de hidratação
-import { useHistory } from "../components/HistoryContext";
+import { useHistory } from "../context/HistoryContext";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

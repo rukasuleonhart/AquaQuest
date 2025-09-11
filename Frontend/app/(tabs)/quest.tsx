@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Dimensions, FlatList, StyleSheet, Text, View } from "react-native";
-import { useHistory } from "../components/HistoryContext";
+import { useHistory } from "../context/HistoryContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 

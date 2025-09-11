@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Dimensions, FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 
-// Obtém a largura da tela do dispositivo, usada para calcular o tamanho da barra de XP
+// ObtÃ©m a largura da tela do dispositivo, usada para calcular o tamanho da barra de XP
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-// Paleta de cores reutilizável
+// Paleta de cores reutilizÃ¡vel
 const PALETTE = {
   lightBlue: "#E6F0FF",
   waterStrong: "rgba(0,122,255,0.9)",
@@ -15,7 +15,7 @@ const PALETTE = {
   incomplete: "#999",
 };
 
-// Tipagem do perfil do usuário
+// Tipagem do perfil do usuÃ¡rio
 type Profile = {
   name: string;
   age: number;
@@ -36,7 +36,7 @@ type Achievement = {
 
 /**
  * Componente que exibe a barra de XP do jogador.
- * Mostra o nível atual, XP atual, XP necessário para o próximo nível
+ * Mostra o nÃ­vel atual, XP atual, XP necessÃ¡rio para o prÃ³ximo nÃ­vel
  * e a barra de progresso proporcional.
  */
 function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: number; level: number }) {
@@ -50,9 +50,9 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
 
   return (
     <View style={styles.xpContainer}>
-      {/* Cabeçalho com nível e XP */}
+      {/* CabeÃ§alho com nÃ­vel e XP */}
       <View style={styles.xpHeader}>
-        <Text style={styles.levelText}>Nível {level}</Text>
+        <Text style={styles.levelText}>NÃ­vel {level}</Text>
         <Text style={styles.xpText}>
           {currentXP} XP / {xpToNext} XP
         </Text>
@@ -71,9 +71,9 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
         />
       </View>
 
-      {/* Texto mostrando quanto falta para o próximo nível */}
+      {/* Texto mostrando quanto falta para o prÃ³ximo nÃ­vel */}
       <Text style={styles.xpMissingText}>
-        {Math.max(0, xpToNext - currentXP)} XP para o próximo nível
+        {Math.max(0, xpToNext - currentXP)} XP para o próximo ní­vel
       </Text>
     </View>
   );
@@ -81,29 +81,29 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
 
 /**
  * Componente que exibe a lista de conquistas do jogador.
- * Recebe um array de conquistas e indica se cada uma está completa.
+ * Recebe um array de conquistas e indica se cada uma estÃ¡ completa.
  */
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
-      <Text style={styles.achievementTitle}>🏆 Conquistas</Text>
+      <Text style={styles.achievementTitle}>ðŸ�† Conquistas</Text>
 
       <FlatList
         data={achievements}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.achievementItem}>
-            {/* Ícone de conquista (checkbox) */}
+            {/* Ã�cone de conquista (checkbox) */}
             <Text
               style={[
                 styles.achievementIcon,
                 { color: item.completed ? PALETTE.complete : PALETTE.incomplete },
               ]}
             >
-              {item.completed ? "✅" : "⬜"}
+              {item.completed ? "âœ…" : "â¬œ"}
             </Text>
             <View style={styles.achievementInfo}>
-              {/* Título e descrição da conquista */}
+              {/* TÃ­tulo e descriÃ§Ã£o da conquista */}
               <Text style={styles.achievementName}>{item.title}</Text>
               <Text style={styles.achievementDescription}>{item.description}</Text>
             </View>
@@ -116,10 +116,10 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
 
 /**
  * Componente principal da tela de perfil.
- * Permite editar informações do perfil, visualizar XP e conquistas.
+ * Permite editar informaÃ§Ãµes do perfil, visualizar XP e conquistas.
  */
 export default function Perfil() {
-  // Estado do perfil do usuário
+  // Estado do perfil do usuÃ¡rio
   const [profile, setProfile] = useState<Profile>({
     name: "Olá, viajante",
     age: 24,
@@ -132,16 +132,14 @@ export default function Perfil() {
 
   // Lista de conquistas iniciais
   const achievements: Achievement[] = [
-    { id: "1", title: "Primeiro Gole", description: "Beba água uma vez", completed: true },
-    { id: "2", title: "Dia Produtivo", description: "Complete todas as missões diárias", completed: false },
-    { id: "3", title: "Resiliência", description: "Beba água 30 dias consecutivos", completed: false },
+    { id: "1", title: "Primeiro Gole", description: "Beba Água uma vez", completed: true },
+    { id: "2", title: "Dia Produtivo", description: "Complete todas as missoes Diárias", completed: false },
+    { id: "3", title: "Resiliencia", description: "Beba Água 30 dias consecutivos", completed: false },
   ];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Perfil</Text>
-
-      {/* Card com informações do perfil e barra de XP */}
+      {/* Card com informaÃ§Ãµes do perfil e barra de XP */}
       <View style={styles.card}>
         <Text style={styles.name}>{profile.name}</Text>
 
@@ -186,7 +184,7 @@ export default function Perfil() {
   );
 }
 
-// Estilos reutilizáveis
+// Estilos reutilizÃ¡veis
 const styles = StyleSheet.create({
   container: { flex: 1, paddingVertical: 20, backgroundColor: PALETTE.lightBlue },
   title: { fontSize: 28, fontWeight: "bold", color: PALETTE.text, textAlign: "center", marginBottom: 20 },
