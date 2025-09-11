@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useHistory } from "../context/HistoryContext";
@@ -7,18 +8,15 @@ import { filterHistory } from "../utils/historyUtils";
 export default function WaterConsumptionScreen() {
   const { history, removeFromHistory } = useHistory();
 
-  // UI: nomes amigáveis
   const [viewMode, setViewMode] = useState<"Hoje" | "Semana" | "Mensal" | "Ano">("Hoje");
 
-  // Mapeamento para nomes esperados pela função filterHistory
   const modeMap = {
     Hoje: "Diário",
     Semana: "Semanal",
     Mensal: "Mensal",
-    Ano: "Anual"
+    Ano: "Anual",
   } as const;
 
-  // Labels do menu com tipagem literal
   const labels = ["Hoje", "Semana", "Mensal", "Ano"] as const;
 
   const handleRemove = (index: number) => {
@@ -32,7 +30,6 @@ export default function WaterConsumptionScreen() {
     );
   };
 
-  // Passa o valor mapeado para filterHistory
   const filteredHistory = filterHistory(history, modeMap[viewMode]);
   const totalFiltered = filteredHistory.reduce((sum, item) => sum + item.amount, 0);
 
@@ -40,31 +37,43 @@ export default function WaterConsumptionScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>Histórico de Consumo de Água</Text>
 
-      {/* Botões de visualização */}
+      {/* Botões com gradiente no ativo */}
       <View style={styles.buttonsRow}>
-        {labels.map(label => (
-          <TouchableOpacity
-            key={label}
-            style={[
-              styles.viewButton,
-              viewMode === label && { backgroundColor: "#4a90e2" }
-            ]}
-            onPress={() => setViewMode(label)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.viewButtonText,
-              viewMode === label && { color: "#fff" }
-            ]}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {labels.map((label) => {
+          const isActive = viewMode === label;
+
+          return isActive ? (
+            <LinearGradient
+              key={label}
+              colors={["#4facfe", "#00f2fe"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradientButton}
+            >
+              <TouchableOpacity
+                style={styles.touchableInside}
+                onPress={() => setViewMode(label)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.viewButtonText, { color: "#fff" }]}>{label}</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          ) : (
+            <TouchableOpacity
+              key={label}
+              style={styles.viewButton}
+              onPress={() => setViewMode(label)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewButtonText}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <ScrollView style={styles.summaryContainer}>
         <Text style={styles.summaryTitle}>Consumo {viewMode}</Text>
-        <Text style={styles.summaryTotal}>{totalFiltered} mL</Text>
+        {totalFiltered > 0 && <Text style={styles.summaryTotal}>{totalFiltered} mL</Text>}
 
         {filteredHistory.length === 0 && (
           <Text style={{ color: "#555", marginBottom: 12 }}>Nenhum registro ainda</Text>
@@ -73,11 +82,23 @@ export default function WaterConsumptionScreen() {
         {filteredHistory.map((item, idx) => {
           const date = new Date(item.time);
           const formattedDate = date.toLocaleDateString("pt-BR");
-          const formattedTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const formattedTime = date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
 
           return (
             <View key={idx} style={styles.recordItem}>
-              <Ionicons name="water" size={24} color="#4a90e2" />
+              {/* Gota com gradiente */}
+              <LinearGradient
+                colors={["#4facfe", "#00f2fe"]}
+                style={styles.iconGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="water" size={20} color="#fff" />
+              </LinearGradient>
+
               <Text style={styles.recordText}>
                 {item.amount} mL - {formattedDate} {formattedTime}
               </Text>
@@ -96,18 +117,28 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f9ff", padding: 16 },
   header: { fontSize: 22, fontWeight: "bold", marginBottom: 12, textAlign: "center" },
 
-  // Linha de botões
-  buttonsRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
+  buttonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 16,
-    gap: 8 // espaço entre botões
+    gap: 8,
   },
-  viewButton: { 
-    paddingVertical: 12,      // mais altura
-    paddingHorizontal: 20,    // mais largura
-    minWidth: 80,             // largura mínima
-    borderRadius: 25,         // mais arredondado
+  gradientButton: {
+    borderRadius: 25,
+    minWidth: 80,
+    elevation: 3,
+  },
+  touchableInside: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    minWidth: 80,
+    borderRadius: 25,
     backgroundColor: "#ddd",
     alignItems: "center",
     justifyContent: "center",
@@ -115,17 +146,33 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    elevation: 3,     
+    elevation: 3,
   },
-  viewButtonText: { 
-    fontSize: 16, 
-    fontWeight: "bold", 
-    color: "#333" 
+  viewButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
   },
 
   summaryContainer: { flex: 1 },
   summaryTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 4 },
   summaryTotal: { fontSize: 16, marginBottom: 12 },
-  recordItem: { flexDirection: "row", alignItems: "center", marginBottom: 8, backgroundColor: "#fff", padding: 8, borderRadius: 8 },
-  recordText: { flex: 1, marginLeft: 8 },
+
+  recordItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 8,
+  },
+  iconGradient: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  recordText: { flex: 1, marginLeft: 4 },
 });

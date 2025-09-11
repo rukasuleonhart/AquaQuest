@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo } from "react";
 import { Dimensions, FlatList, StyleSheet, Text, View } from "react-native";
 import { useHistory } from "../context/HistoryContext";
@@ -30,9 +31,7 @@ export default function RPGQuestsScreen() {
 
   const questsProgress: QuestWithProgress[] = useMemo(() => {
     let consumedDaily = 0;
-    const totalDrank = history
-      .filter(h => h.action === "Bebeu")
-      .reduce((sum, h) => sum + h.amount, 0);
+    const totalDrank = history.filter(h => h.action === "Bebeu").reduce((sum, h) => sum + h.amount, 0);
 
     return quests.map(q => {
       let progress = 0;
@@ -60,25 +59,30 @@ export default function RPGQuestsScreen() {
     const completed = item.progress >= item.target;
     const progressPercent = Math.round((item.progress / item.target) * 100);
 
-    const typeColors = {
-      daily: "#3B82F6",
-      weekly: "#F59E0B",
-      monthly: "#e03314ff",
+    // Gradientes para cada tipo
+    const typeGradients = {
+      daily: ["#3B82F6", "#60A5FA"],
+      weekly: ["#FBBF24", "#FCD34D"],
+      monthly: ["#EF4444", "#F87171"],
     };
-    const progressColor = completed ? "#4ADE80" : typeColors[item.type];
 
     return (
-      <View style={[styles.card, { borderLeftColor: progressColor }]} key={item.id}>
+      <View style={[styles.card, { borderLeftColor: typeGradients[item.type][0] }]} key={item.id}>
         <View style={styles.cardHeader}>
           <Text style={styles.icon}>{item.icon}</Text>
           <Text style={styles.questTitle}>{item.title}</Text>
         </View>
 
         <Text style={styles.questDescription}>{item.description}</Text>
-        <Text style={[styles.xpText, { color: progressColor }]}>Recompensa: +{item.reward} XP 🏆</Text>
+        <Text style={styles.xpText}>Recompensa: +{item.reward} XP 🏆</Text>
 
         <View style={styles.progressBarBackground}>
-          <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: progressColor }]} />
+          <LinearGradient
+            colors={completed ? ["#4ADE80", "#22C55E"] : typeGradients[item.type]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.progressBarFill, { width: `${progressPercent}%` }]}
+          />
         </View>
         <Text style={styles.progressText}>
           {item.progress}/{item.target} {item.unit === "missions" ? "missões" : "mL"}
@@ -90,7 +94,7 @@ export default function RPGQuestsScreen() {
   };
 
   const renderSection = (title: string, data: QuestWithProgress[]) => {
-    const cardWidth = SCREEN_WIDTH; // cada card ocupa toda a tela
+    const cardWidth = SCREEN_WIDTH;
     return (
       <>
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -99,11 +103,10 @@ export default function RPGQuestsScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           pagingEnabled
-          snapToInterval={cardWidth} // garante um card por swipe
+          snapToInterval={cardWidth}
           decelerationRate="fast"
           keyExtractor={item => item.id}
           renderItem={({ item }) => renderQuest(item)}
-          contentContainerStyle={{}} // sem padding horizontal
         />
       </>
     );
@@ -111,7 +114,7 @@ export default function RPGQuestsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Missões RPG 💧</Text>
+      <Text style={styles.title}>Missões</Text>
       {renderSection("Diárias", questsProgress.filter(q => q.type === "daily"))}
       {renderSection("Semanais", questsProgress.filter(q => q.type === "weekly"))}
       {renderSection("Mensais", questsProgress.filter(q => q.type === "monthly"))}
@@ -126,8 +129,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 22, fontWeight: "600", color: "#1E40AF", marginVertical: 10, marginLeft: 10 },
 
   card: {
-    width: SCREEN_WIDTH, // ocupa toda a tela
-    marginRight: 0,      // sem espaço extra
+    width: SCREEN_WIDTH,
+    marginRight: 0,
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 18,
