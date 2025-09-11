@@ -31,7 +31,9 @@ export default function RPGQuestsScreen() {
 
   const questsProgress: QuestWithProgress[] = useMemo(() => {
     let consumedDaily = 0;
-    const totalDrank = history.filter(h => h.action === "Bebeu").reduce((sum, h) => sum + h.amount, 0);
+    const totalDrank = history
+      .filter(h => h.action === "Bebeu")
+      .reduce((sum, h) => sum + h.amount, 0);
 
     return quests.map(q => {
       let progress = 0;
@@ -59,31 +61,35 @@ export default function RPGQuestsScreen() {
     const completed = item.progress >= item.target;
     const progressPercent = Math.round((item.progress / item.target) * 100);
 
-    // Gradientes para cada tipo
     const typeGradients = {
-      daily: ["#3B82F6", "#60A5FA"],
-      weekly: ["#FBBF24", "#FCD34D"],
-      monthly: ["#EF4444", "#F87171"],
+      daily: ["#3B82F6", "#60A5FA"] as const,
+      weekly: ["#FBBF24", "#FCD34D"] as const,
+      monthly: ["#EF4444", "#F87171"] as const,
     };
 
+    const completedGradient = ["#4ADE80", "#22C55E"] as const;
+
     return (
-      <View style={[styles.card, { borderLeftColor: typeGradients[item.type][0] }]} key={item.id}>
+      <View style={[styles.card, { borderLeftColor: completed ? "#4ADE80" : typeGradients[item.type][0] }]} key={item.id}>
         <View style={styles.cardHeader}>
           <Text style={styles.icon}>{item.icon}</Text>
           <Text style={styles.questTitle}>{item.title}</Text>
         </View>
 
         <Text style={styles.questDescription}>{item.description}</Text>
-        <Text style={styles.xpText}>Recompensa: +{item.reward} XP 🏆</Text>
+        <Text style={[styles.xpText, { color: completed ? "#4ADE80" : typeGradients[item.type][0] }]}>
+          Recompensa: +{item.reward} XP 🏆
+        </Text>
 
         <View style={styles.progressBarBackground}>
           <LinearGradient
-            colors={completed ? ["#4ADE80", "#22C55E"] : typeGradients[item.type]}
+            colors={completed ? completedGradient : typeGradients[item.type]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.progressBarFill, { width: `${progressPercent}%` }]}
           />
         </View>
+
         <Text style={styles.progressText}>
           {item.progress}/{item.target} {item.unit === "missions" ? "missões" : "mL"}
         </Text>
@@ -94,7 +100,6 @@ export default function RPGQuestsScreen() {
   };
 
   const renderSection = (title: string, data: QuestWithProgress[]) => {
-    const cardWidth = SCREEN_WIDTH;
     return (
       <>
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -103,7 +108,7 @@ export default function RPGQuestsScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           pagingEnabled
-          snapToInterval={cardWidth}
+          snapToInterval={SCREEN_WIDTH}
           decelerationRate="fast"
           keyExtractor={item => item.id}
           renderItem={({ item }) => renderQuest(item)}
