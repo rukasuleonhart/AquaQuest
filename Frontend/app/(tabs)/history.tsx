@@ -4,7 +4,7 @@
 import { Ionicons } from "@expo/vector-icons"; // Ícones da biblioteca Ionicons
 import { LinearGradient } from "expo-linear-gradient"; // Gradientes lineares para UI
 import React, { useState } from "react"; // React e hook de estado
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"; // Componentes básicos do React Native
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"; // Componentes básicos do React Native
 
 // ---------------------------
 // Importações de contexto e utilitários
@@ -35,15 +35,20 @@ export default function WaterConsumptionScreen() {
 
   // Função que confirma remoção de um registro do histórico
   const handleRemove = (index: number) => {
-    Alert.alert(
-      "Remover registro",
-      "Tem certeza que deseja remover este registro?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Remover", style: "destructive", onPress: () => removeFromHistory(index) },
-      ]
-    );
-  };
+    if (Platform.OS === "web") {
+      const confirmDelete = window.confirm("Tem certeza que deseja remover este registro?");
+      if (confirmDelete) removeFromHistory(index);
+    } else {
+      Alert.alert(
+        "Remover registro",
+        "Tem certeza que deseja remover este registro?",
+         [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Remover", style: "destructive", onPress: () => removeFromHistory(index) },
+         ]
+       );
+      }
+    };
 
   // Filtra o histórico de acordo com o período selecionado
   const filteredHistory = filterHistory(history, modeMap[viewMode]);
