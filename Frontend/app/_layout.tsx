@@ -12,7 +12,7 @@ export default function RootLayout() {
         
         name="(tabs)":
         - Faz referência à tela principal de abas do app.
-        - Geralmente corresponde ao arquivo "tabs.tsx" ou pasta "(tabs)".
+        - Corresponde a pasta "(tabs)".
         
         options={{ headerShown: false }}:
         - Remove o cabeçalho padrão que o Stack Navigator adiciona automaticamente.

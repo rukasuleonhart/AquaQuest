@@ -68,7 +68,19 @@ export default function TabsLayout() {
             ),
           }}
         />
-
+        {/* ---------------------------
+            Aba "Chat" - Tela do chat
+            --------------------------- */}
+        <Tabs.Screen
+          name="chat"
+          options={{
+            headerShown: false,
+            title: "Aqua-Chan",
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="chat-outline" size={24} color={color} />
+            ),
+          }}
+        />
         {/* ---------------------------
             Aba "Missões" - Tela de missões
             --------------------------- */}
