@@ -34,7 +34,7 @@ export default function WaterConsumptionScreen() {
   const labels = ["Hoje", "Semana", "Mensal", "Ano"] as const;
 
   // Função que confirma remoção de um registro do histórico
-  const handleRemove = (index: number) => {
+   const handleRemove = (index: number) => {
     if (Platform.OS === "web") {
       const confirmDelete = window.confirm("Tem certeza que deseja remover este registro?");
       if (confirmDelete) removeFromHistory(index);

@@ -1,28 +1,31 @@
-from dotenv import load_dotenv
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# env_path variavel que armazena o caminho do .env
-env_path = Path(__file__).resolve().parent.parent / '.env' # Sobe uma pasta e encontra o .env
-load_dotenv(dotenv_path = env_path) # Carregando o .env na memória
+# Caminho para o arquivo .env na raiz do projeto
+env_path = Path(__file__).resolve().parent.parent / '.env'
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=env_path, env_file_encoding="utf-8")
+    # Configuração do Pydantic 2.x para carregar o .env
+    model_config = SettingsConfigDict(
+        env_file=env_path,
+        env_file_encoding="utf-8",
+        extra="allow"  # Permite variáveis extras no .env sem erro
+    )
 
-# Tipando os dados de login para DATABASE
-    POSTGRES_USER: str = ""
-    POSTGRES_PASSWORD: str = ""
-    DB_HOST: str = ""
-    DB_PORT: int = 5432
-    POSTGRES_DB: str  = ""
+    # Variáveis de ambiente para conexão com o banco
+    POSTGRES_USER: str = "admin"
+    POSTGRES_PASSWORD: str = "admin"
+    DB_HOST: str = "127.0.0.1"
+    DB_PORT: int = 4090
+    POSTGRES_DB: str  = "AquaQuestDB"
 
-# Gerando a URL para DATABASE
+    # Propriedade para gerar a URL completa de conexão
     @property
-    def database_url(self):
+    def database_url(self) -> str:
         return (
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}"
         )
 
-# Criando uma instancia global
+# Instância global para usar em todo o backend
 settings = Settings()
