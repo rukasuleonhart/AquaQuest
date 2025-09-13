@@ -31,34 +31,29 @@ export default function Index() {
 
   // Referência animada do nível de água
   const waterLevel = useRef(new Animated.Value(0.8)).current;
-  // Estado local do nível de água atual
   const [currentLevel, setCurrentLevel] = useState(0.8);
-  // Armazena o nível de água no início do gesto
   const gestureStartLevel = useRef(0);
 
   // Configurações de UI
-  const INSTANT_FILL_DURATION = 300; // Duração do enchimento instantâneo
-  const cupWidth = 150; // Largura do copo
-  const cupHeight = 300; // Altura do copo
+  const INSTANT_FILL_DURATION = 300;
+  const cupWidth = 150;
+  const cupHeight = 300;
 
   // ---------------------------
-  // Criação das bolhas animadas
+  // Bolhas animadas
   // ---------------------------
   const bubbleCount = 8;
   const bubbles = useRef(
     Array.from({ length: bubbleCount }).map(() => ({
-      y: new Animated.Value(cupHeight * Math.random() * 0.85), // posição vertical inicial
-      xOffset: Math.random() * 20 - 10, // oscilação horizontal
-      baseX: Math.random() * cupWidth * 0.7 + 20, // posição horizontal base
-      size: 4 + Math.random() * 12, // tamanho da bolha
-      speed: 2000 + Math.random() * 2000, // velocidade da animação
-      fade: new Animated.Value(0), // opacidade da bolha
+      y: new Animated.Value(cupHeight * Math.random() * 0.85),
+      xOffset: Math.random() * 20 - 10,
+      baseX: Math.random() * cupWidth * 0.7 + 20,
+      size: 4 + Math.random() * 12,
+      speed: 2000 + Math.random() * 2000,
+      fade: new Animated.Value(0),
     }))
   ).current;
 
-  // ---------------------------
-  // Efeito para animar bolhas continuamente
-  // ---------------------------
   useEffect(() => {
     bubbles.forEach((bubble) => {
       const animate = () => {
@@ -66,41 +61,36 @@ export default function Index() {
         bubble.fade.setValue(0);
 
         Animated.parallel([
-          // Movimento vertical
           Animated.timing(bubble.y, {
             toValue: 0,
             duration: bubble.speed,
             easing: Easing.linear,
             useNativeDriver: true,
           }),
-          // Animação de fade (aparecer/desaparecer)
           Animated.sequence([
             Animated.timing(bubble.fade, { toValue: 1, duration: 300, useNativeDriver: true }),
             Animated.timing(bubble.fade, { toValue: 0, duration: 300, useNativeDriver: true }),
           ]),
-        ]).start(() => animate()); // Repetir continuamente
+        ]).start(() => animate());
       };
       animate();
     });
   }, []);
 
   // ---------------------------
-  // Configuração do gesto de arrastar para encher/esvaziar o copo
+  // Gestos para arrastar água
   // ---------------------------
   const panResponder = useRef(
     PanResponder.create({
-      // Ativar gesto
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
 
-      // Armazenar nível inicial no início do gesto
       onPanResponderGrant: () => {
         waterLevel.stopAnimation((value) => {
           gestureStartLevel.current = value;
         });
       },
 
-      // Atualizar nível de água durante o arrasto
       onPanResponderMove: (_, g) => {
         const sensitivity = 200;
         let newLevel = gestureStartLevel.current - g.dy / sensitivity;
@@ -109,7 +99,6 @@ export default function Index() {
         setCurrentLevel(newLevel);
       },
 
-      // Encher instantaneamente se toque curto
       onPanResponderRelease: (_, g) => {
         if (Math.abs(g.dy) < 5) {
           Animated.timing(waterLevel, {
@@ -118,16 +107,14 @@ export default function Index() {
             useNativeDriver: false,
           }).start(() => {
             setCurrentLevel(MAX_WATER_LEVEL);
-            addToHistory("Encheu", Math.round(MAX_WATER_LEVEL * 500));
+            // Apenas salva a quantidade, sem precisar de action
+            addToHistory(Math.round(MAX_WATER_LEVEL * 500));
           });
         }
       },
     })
   ).current;
 
-  // ---------------------------
-  // Interpolação para altura do copo e cor do texto
-  // ---------------------------
   const waterHeight = waterLevel.interpolate({
     inputRange: [0, 1],
     outputRange: [0, cupHeight * 0.85],
@@ -135,13 +122,13 @@ export default function Index() {
 
   const waterTextColor = waterLevel.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#4facfe", "#007AFF"], // Azul claro -> Azul forte
+    outputRange: ["#4facfe", "#007AFF"],
   });
 
-  const waterAmount = Math.round(currentLevel * 500); // Conversão para mL
+  const waterAmount = Math.round(currentLevel * 500);
 
   // ---------------------------
-  // Função para beber água (esvaziar copo)
+  // Função para beber água
   // ---------------------------
   const handleDrink = () => {
     Animated.timing(waterLevel, {
@@ -151,22 +138,17 @@ export default function Index() {
       useNativeDriver: false,
     }).start(() => {
       setCurrentLevel(0);
-      addToHistory("Bebeu", waterAmount);
+      addToHistory(waterAmount);
     });
   };
 
-  // ---------------------------
-  // Render da UI
-  // ---------------------------
   return (
     <View style={styles.container}>
-      {/* Texto animado com quantidade de água */}
       <Animated.Text style={[styles.waterAmountText, { color: waterTextColor }]}>
         {waterAmount} mL
       </Animated.Text>
 
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-        {/* Régua lateral com marcações */}
         <View style={styles.ruler}>
           {[500, 400, 300, 200, 100, 0].map((mark) => (
             <Text key={mark} style={styles.rulerText}>
@@ -175,7 +157,6 @@ export default function Index() {
           ))}
         </View>
 
-        {/* Copo com gesto e água animada */}
         <View style={[styles.cup, { width: cupWidth, height: cupHeight }]} {...panResponder.panHandlers}>
           <Animated.View style={[styles.water, { height: waterHeight }]}>
             <LinearGradient
@@ -184,7 +165,6 @@ export default function Index() {
               end={{ x: 0, y: 1 }}
               style={{ flex: 1 }}
             />
-            {/* Render das bolhas */}
             {bubbles.map((bubble, i) => {
               const sway = bubble.y.interpolate({
                 inputRange: [0, cupHeight],
@@ -207,13 +187,11 @@ export default function Index() {
             })}
           </Animated.View>
 
-          {/* Bordas do copo */}
           <View style={styles.cupBorder} pointerEvents="none" />
           <View style={styles.topRim} pointerEvents="none" />
         </View>
       </View>
 
-      {/* Botão beber água */}
       <LinearGradient
         colors={["#4facfe", "#00f2fe"]}
         start={{ x: 0, y: 0 }}

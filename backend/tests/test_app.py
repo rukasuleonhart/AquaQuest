@@ -14,5 +14,5 @@ def test_read_root_return_ola_mundo():
     # 1. O status da resposta deve ser 200 (OK)
     assert response.status_code == HTTPStatus.OK
 
-    # 2. O corpo da resposta deve ser o JSON {"message": "Olá Mundo!"}
-    assert response.json() == {"message":"Olá Mundo!"}
+    # 2. O corpo da resposta deve ser o JSON {"message": "✅Conectado a API!"}
+    assert response.json() == {"message":"✅Conectado a API!"}

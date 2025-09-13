@@ -1,57 +1,85 @@
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import api from "../services/api"; // Importa a conexão com o backend
 
 // ---------------------------
 // Tipagem de cada item do histórico
 // ---------------------------
-// Cada ação do usuário será registrada como um item no histórico
+// Cada registro representa a quantidade de água bebida pelo usuário
 export type HistoryItem = { 
-  time: string;   // Data e hora da ação (em ISO string)
-  amount: number; // Quantidade associada à ação (ex: ml de água)
-  action: string; // Tipo de ação realizada (ex: "Bebeu")
+  id: number;      // ID único do registro no banco
+  time: string;    // Data e hora do registro (em ISO string)
+  amount: number;  // Quantidade de água bebida (ml)
 };
 
 // ---------------------------
 // Tipagem do contexto
 // ---------------------------
-// Define quais dados e funções estarão disponíveis globalmente
+// Define os dados e funções disponíveis globalmente
 type HistoryContextType = {
-  history: HistoryItem[]; // Array de ações realizadas
-  addToHistory: (action: string, amount: number) => void; // Função para adicionar uma ação
-  removeFromHistory: (index: number) => void; // Função para remover uma ação pelo índice
+  history: HistoryItem[];            // Lista de registros
+  addToHistory: (amount: number) => void; // Adiciona novo registro
+  removeFromHistory: (id: number) => void; // Remove registro pelo ID
 };
 
 // ---------------------------
 // Criação do contexto
 // ---------------------------
-// Contexto global que vai armazenar o histórico
+// Cria um contexto global para compartilhar os dados
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
 
 // ---------------------------
 // Provider do contexto
 // ---------------------------
-// Componente que envolve a aplicação e fornece acesso ao histórico
+// Componente que fornece o histórico para toda a aplicação
 export const HistoryProvider = ({ children }: { children: ReactNode }) => {
-  // Estado local que guarda todas as ações
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
   // ---------------------------
-  // Função para adicionar ações ao histórico
+  // Buscar histórico no backend ao montar o Provider
   // ---------------------------
-  const addToHistory = (action: string, amount: number) => {
-    const time = new Date().toISOString(); // Pega o horário atual
-    // Adiciona a nova ação no início do array
-    setHistory(prev => [{ time, amount, action }, ...prev]);
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const response = await api.get("/historico");
+        setHistory(response.data); // Espera um array [{id, time, amount}]
+      } catch (error) {
+        console.error("Erro ao carregar histórico:", error);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  // ---------------------------
+  // Adicionar novo registro
+  // ---------------------------
+  const addToHistory = async (amount: number) => {
+    const newItem = { amount, time: new Date().toISOString() };
+
+    try {
+      const response = await api.post("/historico", newItem);
+      // Adiciona o item retornado pelo backend no topo da lista
+      setHistory(prev => [response.data, ...prev]);
+    } catch (error) {
+      console.error("Erro ao adicionar histórico:", error);
+    }
   };
 
   // ---------------------------
-  // Função para remover uma ação pelo índice
+  // Remover registro pelo ID
   // ---------------------------
-  const removeFromHistory = (index: number) => {
-    setHistory(prev => prev.filter((_, i) => i !== index)); // Mantém todos exceto o índice informado
+  const removeFromHistory = async (id: number) => {
+    try {
+      await api.delete(`/historico/${id}`);
+      // Remove do estado local
+      setHistory(prev => prev.filter(item => item.id !== id));
+    } catch (error) {
+      console.error("Erro ao remover histórico:", error);
+    }
   };
 
   // ---------------------------
-  // Retorna o provider com os valores e funções disponíveis globalmente
+  // Retorna o provider com valores e funções disponíveis globalmente
   // ---------------------------
   return (
     <HistoryContext.Provider value={{ history, addToHistory, removeFromHistory }}>
@@ -63,10 +91,9 @@ export const HistoryProvider = ({ children }: { children: ReactNode }) => {
 // ---------------------------
 // Hook personalizado para acessar o contexto
 // ---------------------------
-// Permite usar `useHistory()` em qualquer componente filho do HistoryProvider
+// Permite usar `useHistory()` em qualquer componente dentro do Provider
 export const useHistory = () => {
   const context = useContext(HistoryContext);
-  // Garante que o hook seja usado dentro do Provider
   if (!context) throw new Error("useHistory deve ser usado dentro de HistoryProvider");
   return context;
 };

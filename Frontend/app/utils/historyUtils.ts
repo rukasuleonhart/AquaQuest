@@ -23,6 +23,8 @@ export const filterHistory = (history: HistoryItem[], viewMode: "Diário" | "Sem
         // Calcula início da semana (domingo) e fim da semana (sábado)
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay()); // Subtrai dias até domingo
+        weekStart.setHours(0, 0, 0, 0); // início do dia
+
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6); // Adiciona 6 dias até sábado
         // Retorna apenas ações dentro desta semana

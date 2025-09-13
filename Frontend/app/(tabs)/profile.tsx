@@ -1,24 +1,22 @@
-// ---------------------------
-// Importações
-// ---------------------------
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons"; // Ícones
-import { LinearGradient } from "expo-linear-gradient"; // Gradientes
-import React, { useMemo, useState } from "react"; // React e hooks
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Dimensions,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native"; // Componentes básicos do RN
+} from "react-native";
+import api from "../services/api";
 
-// ---------------------------
-// Constantes da tela e cores
-// ---------------------------
-const SCREEN_WIDTH = Dimensions.get("window").width; // Largura da tela
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const PALETTE = {
   lightBlue: "#E6F0FF",
@@ -31,17 +29,15 @@ const PALETTE = {
   cardBg: "#FFFFFF",
 };
 
-// ---------------------------
-// Tipagens TypeScript
-// ---------------------------
 type Profile = {
+  id: number;
   name: string;
-  activityTime: number; // horas de atividade física
+  activityTime: number;
   weightKg: number;
-  ambientTempC: number; // temperatura ambiente
-  level: number;        // nível do usuário
-  currentXP: number;    // XP atual
-  xpToNext: number;     // XP necessário para o próximo nível
+  ambientTempC: number;
+  level: number;
+  currentXP: number;
+  xpToNext: number;
 };
 
 type Achievement = {
@@ -51,67 +47,54 @@ type Achievement = {
   completed: boolean;
 };
 
-// ---------------------------
-// Componente da barra de XP
-// ---------------------------
+// ------------------- XP BAR -------------------
 function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: number; level: number }) {
-  // Calcula progresso de 0 a 1
   const progress = useMemo(() => {
     const denom = xpToNext <= 0 ? 1 : xpToNext;
     return Math.max(0, Math.min(1, currentXP / denom));
   }, [currentXP, xpToNext]);
 
-  const width = SCREEN_WIDTH - 64; // largura da barra
+  const width = SCREEN_WIDTH - 64;
 
   return (
     <View style={styles.xpContainer}>
-      {/* Cabeçalho com nível e XP atual */}
       <View style={styles.xpHeader}>
         <Text style={styles.levelText}>Nível {level}</Text>
         <Text style={styles.xpText}>
           {currentXP} / {xpToNext} XP
         </Text>
       </View>
-
-      {/* Barra de XP com gradiente */}
       <View style={[styles.xpBarBackground, { width }]}>
         <LinearGradient
           colors={["#4facfe", "#00f2fe"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.xpBarFill, { width: width * progress }]} // preenche de acordo com progresso
+          style={[styles.xpBarFill, { width: width * progress }]}
         />
       </View>
-
-      {/* XP restante */}
       <Text style={styles.xpMissingText}>{Math.max(0, xpToNext - currentXP)} XP para o próximo nível</Text>
     </View>
   );
 }
 
-// ---------------------------
-// Componente de menu de conquistas
-// ---------------------------
+// ------------------- ACHIEVEMENTS -------------------
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
       <Text style={styles.achievementTitle}>Conquistas</Text>
-
       <FlatList
         data={achievements}
         keyExtractor={(item) => item.id}
+        style={{ maxHeight: 250 }}
         renderItem={({ item }) => (
           <View style={styles.achievementItem}>
-            {/* Ícone de conquista */}
             <View style={styles.achievementIcon}>
               <MaterialIcons
-                name={item.completed ? "emoji-events" : "radio-button-unchecked"} // completo ou não
+                name={item.completed ? "emoji-events" : "radio-button-unchecked"}
                 size={28}
                 color={item.completed ? PALETTE.complete : PALETTE.incomplete}
               />
             </View>
-
-            {/* Nome e descrição */}
             <View style={styles.achievementInfo}>
               <Text style={styles.achievementName}>{item.title}</Text>
               <Text style={styles.achievementDescription}>{item.description}</Text>
@@ -123,208 +106,195 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   );
 }
 
-// ---------------------------
-// Mapeamento de ícones para stats do usuário
-// ---------------------------
+// ------------------- ICON MAP -------------------
 const iconMap: Record<keyof Pick<Profile, "weightKg" | "activityTime" | "ambientTempC">, keyof typeof MaterialCommunityIcons.glyphMap> = {
   weightKg: "weight",
-  activityTime: "soccer",
+  activityTime: "run",
   ambientTempC: "thermometer",
 };
 
-// ---------------------------
-// Função auxiliar para interpolar cores
-// ---------------------------
+// ------------------- COLOR INTERPOLATION -------------------
 function interpolateColor(color1: string, color2: string, factor: number) {
   const c1 = parseInt(color1.slice(1), 16);
   const c2 = parseInt(color2.slice(1), 16);
-
-  const r1 = (c1 >> 16) & 0xff;
-  const g1 = (c1 >> 8) & 0xff;
-  const b1 = c1 & 0xff;
-
-  const r2 = (c2 >> 16) & 0xff;
-  const g2 = (c2 >> 8) & 0xff;
-  const b2 = c2 & 0xff;
-
+  const r1 = (c1 >> 16) & 0xff,
+    g1 = (c1 >> 8) & 0xff,
+    b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff,
+    g2 = (c2 >> 8) & 0xff,
+    b2 = c2 & 0xff;
   const r = Math.round(r1 + factor * (r2 - r1));
   const g = Math.round(g1 + factor * (g2 - g1));
   const b = Math.round(b1 + factor * (b2 - b1));
-
   return `rgb(${r},${g},${b})`;
 }
 
-// ---------------------------
-// Função para definir cor da temperatura
-// ---------------------------
 const getTempColor = (tempC: number) => {
-  if (tempC <= 10) return "#007AFF"; // azul frio
-  if (tempC <= 20) return interpolateColor("#007AFF", "#FFD700", (tempC - 10) / 10); // azul->amarelo
-  if (tempC <= 30) return interpolateColor("#FFD700", "#FF3B30", (tempC - 20) / 10); // amarelo->vermelho
-  return "#FF3B30"; // vermelho quente
+  if (tempC <= 10) return "#007AFF";
+  if (tempC <= 20) return interpolateColor("#007AFF", "#FFD700", (tempC - 10) / 10);
+  if (tempC <= 30) return interpolateColor("#FFD700", "#FF3B30", (tempC - 20) / 10);
+  return "#FF3B30";
 };
 
-// ---------------------------
-// Componente principal do Perfil
-// ---------------------------
+// ------------------- PERFIL COMPONENT -------------------
 export default function Perfil() {
-  const [profile, setProfile] = useState<Profile>({
-    name: "Olá, </>",
-    weightKg: 50,
-    activityTime: 2,
-    ambientTempC: 33,
-    level: 0,
-    currentXP: 40,
-    xpToNext: 100,
-  });
-
-  // Modal para editar campos
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentField, setCurrentField] = useState<keyof Profile | null>(null);
-  const [inputValue, setInputValue] = useState<string>("");
+  const [inputValue, setInputValue] = useState("");
 
-  // ---------------------------
-  // Funções para abrir modal e editar campo
-  // ---------------------------
+  const fieldMap: Record<keyof Profile, string> = {
+    id: "id", // usado só internamente, não será enviado no payload
+    name: "name",
+    activityTime: "activity_time",
+    weightKg: "weight_kg",
+    ambientTempC: "ambient_temp_c",
+    level: "level",
+    currentXP: "current_xp",
+    xpToNext: "xp_to_next",
+  };
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get("/perfil");
+        const data: Profile = {
+          id: res.data.id,
+          name: res.data.name,
+          activityTime: res.data.activity_time,
+          weightKg: res.data.weight_kg,
+          ambientTempC: res.data.ambient_temp_c,
+          level: res.data.level,
+          currentXP: res.data.current_xp,
+          xpToNext: res.data.xp_to_next,
+        };
+        setProfile(data);
+      } catch (err) {
+        Alert.alert("Erro", "Não foi possível carregar o perfil");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   const handleIconPress = (field: keyof Profile) => {
+    if (!profile) return;
+    if (["id", "level", "currentXP", "xpToNext"].includes(field)) return;
     setCurrentField(field);
-    setInputValue(String(profile[field])); // valor atual
+    setInputValue(String(profile[field]));
     setModalVisible(true);
   };
 
-  const handleSave = () => {
-    if (currentField) {
-      const newValue = parseFloat(inputValue.replace(",", "."));
-      setProfile((prev) => ({
-        ...prev,
-        [currentField]: !isNaN(newValue) ? newValue : prev[currentField], // atualiza valor
-      }));
+  const handleSave = async () => {
+    if (!profile || !currentField) return;
+
+    let newValue: any = inputValue.trim();
+
+    // Conversão correta de tipos
+    if (["weightKg", "ambientTempC"].includes(currentField)) {
+      newValue = parseFloat(newValue.replace(",", "."));
+      if (isNaN(newValue)) return Alert.alert("Valor inválido");
+    } else if (["activityTime", "level", "currentXP", "xpToNext"].includes(currentField)) {
+      newValue = parseInt(newValue);
+      if (isNaN(newValue)) return Alert.alert("Valor inválido");
     }
-    setModalVisible(false);
+
+    const backendField = fieldMap[currentField];
+    const payload = { [backendField]: newValue }; // NÃO enviar id
+
+    try {
+      console.log("Payload enviado:", payload);
+      await api.put(`/perfil/${profile.id}`, payload);
+      setProfile({ ...profile, [currentField]: newValue });
+      setModalVisible(false);
+    } catch (err) {
+      console.error("Erro ao salvar:", err);
+      Alert.alert("Erro", "Não foi possível salvar a alteração");
+    }
   };
 
-  const handleCancel = () => setModalVisible(false);
+  if (loading) return <View style={styles.container}><Text style={{ textAlign: "center", marginTop: 40 }}>Carregando...</Text></View>;
+  if (!profile) return <View style={styles.container}><Text style={{ textAlign: "center", marginTop: 40 }}>Erro ao carregar perfil</Text></View>;
 
-  // Conquistas de exemplo
   const achievements: Achievement[] = [
     { id: "1", title: "Primeiro Gole", description: "Beba água uma vez", completed: true },
     { id: "2", title: "Dia Produtivo", description: "Complete todas as missões diárias", completed: false },
     { id: "3", title: "Resiliência", description: "Beba água 30 dias consecutivos", completed: false },
   ];
 
-  // ---------------------------
-  // Render da UI
-  // ---------------------------
   return (
-    <View style={styles.container}>
-      {/* Card de perfil */}
-      <View style={styles.profileCard}>
-        <Text style={styles.profileName}>{profile.name}</Text>
-
-        {/* Linha de estatísticas */}
-        <View style={styles.statsRow}>
-          {/* Peso */}
-          <View style={styles.statBox}>
-            <TouchableOpacity onPress={() => handleIconPress("weightKg")}>
-              <MaterialCommunityIcons name={iconMap.weightKg} size={28} color={PALETTE.text} />
-            </TouchableOpacity>
-            <Text style={styles.statLabel}>Peso</Text>
-            <Text style={styles.statValue}>{profile.weightKg}</Text>
-          </View>
-
-          {/* Atividade física */}
-          <View style={styles.statBox}>
-            <TouchableOpacity onPress={() => handleIconPress("activityTime")}>
-              <MaterialCommunityIcons name={iconMap.activityTime} size={28} color={PALETTE.text} />
-            </TouchableOpacity>
-            <Text style={styles.statLabel}>Ativ. Física</Text>
-            <Text style={styles.statValue}>{profile.activityTime} horas</Text>
-          </View>
-
-          {/* Temperatura ambiente */}
-          <View style={styles.statBox}>
-            <TouchableOpacity onPress={() => handleIconPress("ambientTempC")}>
-              <MaterialCommunityIcons name={iconMap.ambientTempC} size={28} color={getTempColor(profile.ambientTempC)} />
-            </TouchableOpacity>
-            <Text style={styles.statLabel}>Temp °C</Text>
-            <Text style={styles.statValue}>{profile.ambientTempC}</Text>
-          </View>
-        </View>
-
-        {/* Barra de XP */}
-        <XPBar currentXP={profile.currentXP} xpToNext={profile.xpToNext} level={profile.level} />
-      </View>
-
-      {/* Menu de conquistas */}
-      <AchievementMenu achievements={achievements} />
-
-      {/* Modal para edição */}
-      <Modal transparent visible={modalVisible} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalText}>Alterar valor:</Text>
-
-            {currentField && (
-              <View style={{ marginBottom: 20, alignItems: "center" }}>
-                <TextInput
-                  style={styles.input}
-                  value={inputValue}
-                  onChangeText={setInputValue}
-                  keyboardType="decimal-pad"
-                  autoFocus
-                />
-              </View>
-            )}
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, { backgroundColor: "#007AFF" }]} onPress={handleSave}>
-                <Text style={styles.buttonText}>Salvar</Text>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <View style={styles.container}>
+        <View style={styles.profileCard}>
+          <Text style={styles.profileName}>{profile.name}</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <TouchableOpacity onPress={() => handleIconPress("weightKg")}>
+                <MaterialCommunityIcons name={iconMap.weightKg} size={28} color={PALETTE.text} />
               </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.button, { backgroundColor: "#FF3B30" }]} onPress={handleCancel}>
-                <Text style={styles.buttonText}>Cancelar</Text>
+              <Text style={styles.statLabel}>Peso</Text>
+              <Text style={styles.statValue}>{profile.weightKg}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <TouchableOpacity onPress={() => handleIconPress("activityTime")}>
+                <MaterialCommunityIcons name={iconMap.activityTime} size={28} color={PALETTE.text} />
               </TouchableOpacity>
+              <Text style={styles.statLabel}>Ativ. Física</Text>
+              <Text style={styles.statValue}>{profile.activityTime} horas</Text>
+            </View>
+            <View style={styles.statBox}>
+              <TouchableOpacity onPress={() => handleIconPress("ambientTempC")}>
+                <MaterialCommunityIcons name={iconMap.ambientTempC} size={28} color={getTempColor(profile.ambientTempC)} />
+              </TouchableOpacity>
+              <Text style={styles.statLabel}>Temp °C</Text>
+              <Text style={styles.statValue}>{profile.ambientTempC}</Text>
             </View>
           </View>
+
+          <XPBar currentXP={profile.currentXP} xpToNext={profile.xpToNext} level={profile.level} />
         </View>
-      </Modal>
-    </View>
+
+        <AchievementMenu achievements={achievements} />
+
+        <Modal transparent visible={modalVisible} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalText}>Alterar valor:</Text>
+              {currentField && (
+                <View style={{ marginBottom: 20, alignItems: "center" }}>
+                  <TextInput
+                    style={styles.input}
+                    value={inputValue}
+                    onChangeText={setInputValue}
+                    keyboardType="decimal-pad"
+                    autoFocus
+                  />
+                </View>
+              )}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={[styles.button, { backgroundColor: "#007AFF" }]} onPress={handleSave}>
+                  <Text style={styles.buttonText}>Salvar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.button, { backgroundColor: "#FF3B30" }]} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
-// ---------------------------
-// Estilos
-// ---------------------------
 const styles = StyleSheet.create({
   container: { flex: 1, paddingVertical: 20, backgroundColor: PALETTE.lightBlue },
-  profileCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    marginHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 6,
-    marginBottom: 20,
-  },
+  profileCard: { backgroundColor: "#fff", borderRadius: 24, padding: 20, marginHorizontal: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 6, marginBottom: 20 },
   profileName: { fontSize: 26, fontWeight: "800", color: PALETTE.text, textAlign: "center", marginBottom: 20 },
   statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
-  statBox: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginHorizontal: 4,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 3,
-  },
+  statBox: { flex: 1, backgroundColor: "#F5F7FA", borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: 4, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 3 },
   statLabel: { fontSize: 12, color: PALETTE.rulerText, fontWeight: "500", marginTop: 4, marginBottom: 2 },
   statValue: { fontSize: 18, fontWeight: "700", color: PALETTE.text },
   xpContainer: { marginTop: 8 },
@@ -334,7 +304,7 @@ const styles = StyleSheet.create({
   xpBarBackground: { height: 20, borderRadius: 14, backgroundColor: "#E3E7FF", overflow: "hidden" },
   xpBarFill: { height: "100%", borderRadius: 14 },
   xpMissingText: { marginTop: 6, fontSize: 13, color: PALETTE.rulerText },
-  achievementContainer: { marginTop: 0, marginHorizontal: 20, backgroundColor: PALETTE.cardBg, borderRadius: 24, padding: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 4 },
+  achievementContainer: { marginHorizontal: 20, backgroundColor: PALETTE.cardBg, borderRadius: 24, padding: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 4 },
   achievementTitle: { fontSize: 22, fontWeight: "700", marginBottom: 18, color: PALETTE.text, textAlign: "center" },
   achievementItem: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
   achievementIcon: { width: 36, alignItems: "center", justifyContent: "center", marginRight: 14 },

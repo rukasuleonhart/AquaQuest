@@ -13,81 +13,79 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 // ---------------------------
 // Importando componentes do Expo
 // ---------------------------
-// Componente de navegação em abas do Expo Router
+// Tabs: componente que cria navegação por abas (bottom tabs)
 import { Tabs } from "expo-router";
 
 // ---------------------------
 // Importando Contextos
 // ---------------------------
-// HistoryProvider: provedor de contexto que gerencia o histórico
-// de ações do usuário e disponibiliza esse estado globalmente
+// HistoryProvider: provedor global que gerencia o histórico de consumo de água
 import { HistoryProvider } from "../context/HistoryContext";
 
 /**
- * Componente principal de layout com abas do aplicativo.
- * Ele envolve todas as telas com o HistoryProvider, permitindo que
- * qualquer tela filha acesse o contexto de histórico.
+ * Layout principal do aplicativo.
+ * Envolve todas as telas no HistoryProvider para que possam acessar
+ * o histórico global e configura as abas da navegação.
  */
 export default function TabsLayout() {
   return (
-    // HistoryProvider fornece o estado global de histórico
+    // Contexto global que disponibiliza o histórico para todas as telas
     <HistoryProvider>
       <Tabs
         screenOptions={{
-          // Define a cor do ícone da aba quando está ativa
+          // Cor dos ícones das abas quando estão ativas
           tabBarActiveTintColor: "rgba(2, 136, 209, 0.95)",
-          // Define a cor do ícone da aba quando está inativa
+          // Cor dos ícones quando inativas
           tabBarInactiveTintColor: "#c3cfe2",
+          // Oculta o cabeçalho padrão de todas as telas
+          headerShown: false,
         }}
       >
         {/* ---------------------------
             Aba "Beber" - Tela principal
             --------------------------- */}
         <Tabs.Screen
-          name="index" // Nome da rota (usado pelo router)
+          name="index"
           options={{
-            headerShown: false, // Esconde o cabeçalho da tela
-            title: "Beber",     // Título exibido na aba
+            title: "Beber",
             tabBarIcon: ({ color }) => (
-              // Ícone da aba que muda de cor conforme estado (ativo/inativo)
               <FontAwesome6 name="glass-water" size={24} color={color} />
             ),
           }}
         />
 
         {/* ---------------------------
-            Aba "Historico" - Tela de histórico
+            Aba "Histórico"
             --------------------------- */}
         <Tabs.Screen
           name="history"
           options={{
-            headerShown: false,
-            title: "Historico",
+            title: "Histórico",
             tabBarIcon: ({ color }) => (
               <FontAwesome5 name="clock" size={24} color={color} />
             ),
           }}
         />
+
         {/* ---------------------------
-            Aba "Chat" - Tela do chat
+            Aba "Chat"
             --------------------------- */}
         <Tabs.Screen
           name="chat"
           options={{
-            headerShown: false,
             title: "Aqua-Chan",
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="chat-outline" size={24} color={color} />
             ),
           }}
         />
+
         {/* ---------------------------
-            Aba "Missões" - Tela de missões
+            Aba "Missões"
             --------------------------- */}
         <Tabs.Screen
           name="quest"
           options={{
-            headerShown: false,
             title: "Missões",
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="sword" size={24} color={color} />
@@ -96,12 +94,11 @@ export default function TabsLayout() {
         />
 
         {/* ---------------------------
-            Aba "Perfil" - Tela de perfil
+            Aba "Perfil"
             --------------------------- */}
         <Tabs.Screen
           name="profile"
           options={{
-            headerShown: false,
             title: "Perfil",
             tabBarIcon: ({ color }) => (
               <Ionicons name="person" size={24} color={color} />

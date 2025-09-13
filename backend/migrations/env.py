@@ -5,6 +5,10 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
+from api.models.base import Base
+from api.models.profileModel import Profile   # ⬅ importa a model
+from api.models.historyModel import Historico # ⬅ importa a model
+
 # Adiciona a raiz do projeto ao sys.path para importar settings
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -21,13 +25,10 @@ if config.config_file_name is not None:
 # Define a URL do banco dinamicamente usando settings
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
-# Importa seu Base do SQLAlchemy
-# Substitua pelo caminho correto do seu Base
-from api.models.base import Base
+# metadata do Alembic (agora com todas as tabelas registradas)
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -40,7 +41,6 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
