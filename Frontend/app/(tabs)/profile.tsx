@@ -188,32 +188,43 @@ export default function Perfil() {
   };
 
   const handleSave = async () => {
-    if (!profile || !currentField) return;
+  if (!profile || !currentField) return;
 
-    let newValue: any = inputValue.trim();
+  let newValue: any = inputValue.trim();
 
-    // Conversão correta de tipos
-    if (["weightKg", "ambientTempC"].includes(currentField)) {
-      newValue = parseFloat(newValue.replace(",", "."));
-      if (isNaN(newValue)) return Alert.alert("Valor inválido");
-    } else if (["activityTime", "level", "currentXP", "xpToNext"].includes(currentField)) {
-      newValue = parseInt(newValue);
-      if (isNaN(newValue)) return Alert.alert("Valor inválido");
-    }
+  // Conversão de tipos
+  if (["weightKg", "ambientTempC"].includes(currentField)) {
+    newValue = parseFloat(newValue.replace(",", "."));
+    if (isNaN(newValue)) return Alert.alert("Valor inválido");
+  } else if (["activityTime", "level", "currentXP", "xpToNext"].includes(currentField)) {
+    newValue = parseInt(newValue);
+    if (isNaN(newValue)) return Alert.alert("Valor inválido");
+  }
 
-    const backendField = fieldMap[currentField];
-    const payload = { [backendField]: newValue }; // NÃO enviar id
-
-    try {
-      console.log("Payload enviado:", payload);
-      await api.put(`/perfil/${profile.id}`, payload);
-      setProfile({ ...profile, [currentField]: newValue });
-      setModalVisible(false);
-    } catch (err) {
-      console.error("Erro ao salvar:", err);
-      Alert.alert("Erro", "Não foi possível salvar a alteração");
-    }
+  // Payload completo para PUT
+  const payload = {
+    id: profile.id,
+    name: profile.name,
+    activity_time: profile.activityTime,
+    weight_kg: profile.weightKg,
+    ambient_temp_c: profile.ambientTempC,
+    level: profile.level,
+    current_xp: profile.currentXP,
+    xp_to_next: profile.xpToNext,
+    [fieldMap[currentField]]: newValue, // substitui o campo alterado
   };
+
+  console.log("Payload enviado:", payload);
+
+  try {
+    await api.put(`/perfil/${profile.id}`, payload); // usa PUT
+    setProfile({ ...profile, [currentField]: newValue });
+    setModalVisible(false);
+  } catch (err) {
+    console.error("Erro ao salvar:", err);
+    Alert.alert("Erro", "Não foi possível salvar a alteração");
+  }
+};
 
   if (loading) return <View style={styles.container}><Text style={{ textAlign: "center", marginTop: 40 }}>Carregando...</Text></View>;
   if (!profile) return <View style={styles.container}><Text style={{ textAlign: "center", marginTop: 40 }}>Erro ao carregar perfil</Text></View>;

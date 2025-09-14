@@ -30,11 +30,11 @@ def create_perfil(profile_create: ProfileSchema, db: Session = Depends(get_db)):
     db.refresh(new_profile)
     return new_profile
 
-# PUT - Atualiza campos específicos do perfil pelo ID
+# Patch - Atualiza campos específicos do perfil pelo ID
 @router.put("/{profile_id}", response_model=ProfileSchema)
 def update_perfil(
-    profile_update: ProfileUpdateSchema,  # body vem primeiro
-    profile_id: int = Path(..., description="ID do perfil a ser atualizado"),
+    profile_update: ProfileUpdateSchema,
+    profile_id: int,
     db: Session = Depends(get_db)
 ):
     profile = db.query(Profile).filter(Profile.id == profile_id).first()
@@ -49,4 +49,5 @@ def update_perfil(
     db.commit()
     db.refresh(profile)
     return profile
+
 

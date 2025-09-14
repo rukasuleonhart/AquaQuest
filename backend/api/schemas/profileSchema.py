@@ -17,7 +17,7 @@ class ProfileSchema(BaseModel):
 
 class ProfileUpdateSchema(BaseModel):
     name: Optional[str]
-    activity_time: Optional[int]
+    activity_time: Optional[float]
     weight_kg: Optional[float]
     ambient_temp_c: Optional[float]
     level: Optional[int]
