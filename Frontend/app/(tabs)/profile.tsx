@@ -1,38 +1,25 @@
 // ------------------- IMPORTAÇÕES -------------------
-// Ícones prontos para usar no React Native
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-
-// Gradiente linear para preencher barras ou backgrounds
-import { LinearGradient } from "expo-linear-gradient";
-
-// Importa React e hooks
 import React, { useEffect, useMemo, useState } from "react";
-
-// Componentes do React Native
 import {
-  Alert,            // Mostra mensagens de alerta
-  Dimensions,       // Pega tamanho da tela
-  FlatList,         // Lista eficiente para muitos itens
-  KeyboardAvoidingView, // Evita que o teclado cubra os inputs
-  Modal,            // Janela popup
-  Platform,         // Detecta sistema operacional (iOS ou Android)
-  StyleSheet,       // Criar estilos
-  Text,             // Texto
-  TextInput,        // Campo de entrada de texto
-  TouchableOpacity, // Botão clicável
-  View,             // Container de layout
+  Alert,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
-// API configurada para comunicação com backend
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import api from "../services/api";
-
-// Funções para calcular metas de consumo de água
 import { calculateDailyWaterTarget, calculatePerMissionTarget } from "../utils/waterUtils";
 
-// Pega largura da tela do dispositivo
+// ------------------- CONSTANTES -------------------
 const SCREEN_WIDTH = Dimensions.get("window").width;
-
-// Paleta de cores do app
 const PALETTE = {
   lightBlue: "#E6F0FF",
   waterStrong: "#007AFF",
@@ -45,7 +32,6 @@ const PALETTE = {
 };
 
 // ------------------- TIPOS -------------------
-// Estrutura do perfil do usuário
 type Profile = {
   id: number;
   name: string;
@@ -57,7 +43,6 @@ type Profile = {
   xpToNext: number;
 };
 
-// Estrutura de uma conquista
 type Achievement = {
   id: string;
   title: string;
@@ -65,30 +50,20 @@ type Achievement = {
   completed: boolean;
 };
 
-// ------------------- XP BAR -------------------
-// Componente que mostra a barra de XP
-function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: number; level: number }) {
-  // Calcula a porcentagem de XP atual (entre 0 e 1)
-  const progress = useMemo(() => {
-    const denom = xpToNext <= 0 ? 1 : xpToNext; // Evita divisão por 0
-    return Math.max(0, Math.min(1, currentXP / denom));
-  }, [currentXP, xpToNext]);
+// ------------------- COMPONENTES -------------------
 
-  const width = SCREEN_WIDTH - 64; // Largura da barra
+// Barra de XP
+function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: number; level: number }) {
+  const progress = useMemo(() => Math.max(0, Math.min(1, currentXP / (xpToNext <= 0 ? 1 : xpToNext))), [currentXP, xpToNext]);
+  const width = SCREEN_WIDTH - 64;
 
   return (
     <View style={styles.xpContainer}>
-      {/* Cabeçalho mostrando nível e XP atual */}
       <View style={styles.xpHeader}>
         <Text style={styles.levelText}>Nível {level}</Text>
-        <Text style={styles.xpText}>
-          {currentXP} / {xpToNext} XP
-        </Text>
+        <Text style={styles.xpText}>{currentXP} / {xpToNext} XP</Text>
       </View>
-
-      {/* Barra de fundo */}
       <View style={[styles.xpBarBackground, { width }]}>
-        {/* Preenchimento com gradiente */}
         <LinearGradient
           colors={["#4facfe", "#00f2fe"]}
           start={{ x: 0, y: 0 }}
@@ -96,27 +71,23 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
           style={[styles.xpBarFill, { width: width * progress }]}
         />
       </View>
-
-      {/* Texto mostrando quanto falta para o próximo nível */}
       <Text style={styles.xpMissingText}>{Math.max(0, xpToNext - currentXP)} XP para o próximo nível</Text>
     </View>
   );
 }
 
-// ------------------- ACHIEVEMENTS -------------------
-// Componente que lista conquistas
+// Lista de conquistas
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
       <Text style={styles.achievementTitle}>Conquistas</Text>
       <FlatList
-        data={achievements}          // Lista de conquistas
-        keyExtractor={(item) => item.id} // Identificador único
-        style={{ maxHeight: 250 }}       // Altura máxima da lista
+        data={achievements}
+        keyExtractor={(item) => item.id}
+        style={{ maxHeight: 250 }}
         renderItem={({ item }) => (
           <View style={styles.achievementItem}>
             <View style={styles.achievementIcon}>
-              {/* Ícone diferente se a conquista está completa ou não */}
               <MaterialIcons
                 name={item.completed ? "emoji-events" : "radio-button-unchecked"}
                 size={28}
@@ -134,48 +105,40 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   );
 }
 
-// ------------------- ICON MAP -------------------
-// Mapeia estatísticas do perfil para ícones
+// Mapeia estatísticas para ícones
 const iconMap: Record<keyof Pick<Profile, "weightKg" | "activityTime" | "ambientTempC">, keyof typeof MaterialCommunityIcons.glyphMap> = {
   weightKg: "weight",
   activityTime: "run",
   ambientTempC: "thermometer",
 };
 
-// ------------------- INTERPOLAÇÃO DE CORES -------------------
-// Função para misturar duas cores
+// Interpolação de cores para temperatura
 function interpolateColor(color1: string, color2: string, factor: number) {
   const c1 = parseInt(color1.slice(1), 16);
   const c2 = parseInt(color2.slice(1), 16);
-  const r1 = (c1 >> 16) & 0xff,
-    g1 = (c1 >> 8) & 0xff,
-    b1 = c1 & 0xff;
-  const r2 = (c2 >> 16) & 0xff,
-    g2 = (c2 >> 8) & 0xff,
-    b2 = c2 & 0xff;
+  const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
   const r = Math.round(r1 + factor * (r2 - r1));
   const g = Math.round(g1 + factor * (g2 - g1));
   const b = Math.round(b1 + factor * (b2 - b1));
   return `rgb(${r},${g},${b})`;
 }
 
-// Retorna a cor baseada na temperatura
 const getTempColor = (tempC: number) => {
-  if (tempC <= 10) return "#007AFF"; // azul
-  if (tempC <= 20) return interpolateColor("#007AFF", "#FFD700", (tempC - 10) / 10); // azul -> amarelo
-  if (tempC <= 30) return interpolateColor("#FFD700", "#FF3B30", (tempC - 20) / 10); // amarelo -> vermelho
-  return "#FF3B30"; // vermelho
+  if (tempC <= 10) return "#007AFF";
+  if (tempC <= 20) return interpolateColor("#007AFF", "#FFD700", (tempC - 10) / 10);
+  if (tempC <= 30) return interpolateColor("#FFD700", "#FF3B30", (tempC - 20) / 10);
+  return "#FF3B30";
 };
 
-// ------------------- PERFIL COMPONENT -------------------
+// ------------------- COMPONENTE PRINCIPAL -------------------
 export default function Perfil() {
-  const [profile, setProfile] = useState<Profile | null>(null); // Armazena dados do perfil
-  const [loading, setLoading] = useState(true);                // Carregando ou não
-  const [modalVisible, setModalVisible] = useState(false);     // Mostra modal de edição
-  const [currentField, setCurrentField] = useState<keyof Profile | null>(null); // Campo sendo editado
-  const [inputValue, setInputValue] = useState("");            // Valor do input do modal
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentField, setCurrentField] = useState<keyof Profile | null>(null);
+  const [inputValue, setInputValue] = useState("");
 
-  // Mapeamento entre campos do frontend e backend
   const fieldMap: Record<keyof Profile, string> = {
     id: "id",
     name: "name",
@@ -187,11 +150,10 @@ export default function Perfil() {
     xpToNext: "xp_to_next",
   };
 
-  // Carrega perfil ao montar componente
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/perfil"); // Chama API
+        const res = await api.get("/perfil");
         const data: Profile = {
           id: res.data.id,
           name: res.data.name,
@@ -202,32 +164,27 @@ export default function Perfil() {
           currentXP: res.data.current_xp,
           xpToNext: res.data.xp_to_next,
         };
-        setProfile(data); // Salva perfil no estado
+        setProfile(data);
       } catch (err) {
-        Alert.alert("Erro", "Não foi possível carregar o perfil"); // Alerta se falhar
+        Alert.alert("Erro", "Não foi possível carregar o perfil");
       } finally {
-        setLoading(false); // Para de mostrar loading
+        setLoading(false);
       }
     };
     fetchProfile();
   }, []);
 
-  // Abre modal para editar campo
   const handleIconPress = (field: keyof Profile) => {
-    if (!profile) return; // Se perfil não existe, não faz nada
-    if (["id", "level", "currentXP", "xpToNext"].includes(field)) return; // Campos não editáveis
-    setCurrentField(field); 
-    setInputValue(String(profile[field])); // Coloca valor atual no input
-    setModalVisible(true);                 // Mostra modal
+    if (!profile) return;
+    if (["id", "level", "currentXP", "xpToNext"].includes(field)) return;
+    setCurrentField(field);
+    setInputValue(String(profile[field]));
+    setModalVisible(true);
   };
 
-  // Salva novo valor
   const handleSave = async () => {
     if (!profile || !currentField) return;
-
-    let newValue: any = inputValue.trim(); // Remove espaços
-
-    // Converte para número se necessário
+    let newValue: any = inputValue.trim();
     if (["weightKg", "ambientTempC"].includes(currentField)) {
       newValue = parseFloat(newValue.replace(",", "."));
       if (isNaN(newValue)) return Alert.alert("Valor inválido");
@@ -236,7 +193,6 @@ export default function Perfil() {
       if (isNaN(newValue)) return Alert.alert("Valor inválido");
     }
 
-    // Cria payload completo para enviar ao backend
     const payload = {
       id: profile.id,
       name: profile.name,
@@ -246,22 +202,18 @@ export default function Perfil() {
       level: profile.level,
       current_xp: profile.currentXP,
       xp_to_next: profile.xpToNext,
-      [fieldMap[currentField]]: newValue, // Sobrescreve campo editado
+      [fieldMap[currentField]]: newValue,
     };
 
-    console.log("Payload enviado:", payload);
-
     try {
-      await api.put(`/perfil/${profile.id}`, payload); // Atualiza backend
-      setProfile({ ...profile, [currentField]: newValue }); // Atualiza localmente
-      setModalVisible(false); // Fecha modal
+      await api.put(`/perfil/${profile.id}`, payload);
+      setProfile({ ...profile, [currentField]: newValue });
+      setModalVisible(false);
     } catch (err) {
-      console.error("Erro ao salvar:", err);
       Alert.alert("Erro", "Não foi possível salvar a alteração");
     }
   };
 
-  // Mostra loading se estiver carregando
   if (loading)
     return (
       <View style={styles.container}>
@@ -269,7 +221,6 @@ export default function Perfil() {
       </View>
     );
 
-  // Mostra erro se perfil não carregou
   if (!profile)
     return (
       <View style={styles.container}>
@@ -277,26 +228,21 @@ export default function Perfil() {
       </View>
     );
 
-  // ------------------- CÁLCULOS DE ÁGUA -------------------
-  const waterGoalMl = calculateDailyWaterTarget(profile.weightKg);          // Meta diária
-  const waterPerMissionMl = calculatePerMissionTarget(profile.weightKg, 3); // Meta por missão
+  const waterGoalMl = calculateDailyWaterTarget(profile.weightKg);
+  const waterPerMissionMl = calculatePerMissionTarget(profile.weightKg, 3);
 
-  // Conquistas de exemplo
   const achievements: Achievement[] = [
     { id: "1", title: "Primeiro Gole", description: "Beba água uma vez", completed: true },
     { id: "2", title: "Dia Produtivo", description: "Complete todas as missões diárias", completed: false },
     { id: "3", title: "Resiliência", description: "Beba água 30 dias consecutivos", completed: false },
   ];
 
-  // ------------------- RENDER -------------------
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.container}>
-        {/* CARD DO PERFIL */}
         <View style={styles.profileCard}>
           <Text style={styles.profileName}>{profile.name}</Text>
 
-          {/* ESTATÍSTICAS */}
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <TouchableOpacity onPress={() => handleIconPress("weightKg")}>
@@ -316,22 +262,22 @@ export default function Perfil() {
 
             <View style={styles.statBox}>
               <TouchableOpacity onPress={() => handleIconPress("ambientTempC")}>
-                <MaterialCommunityIcons
-                  name={iconMap.ambientTempC}
-                  size={28}
-                  color={getTempColor(profile.ambientTempC)}
-                />
+                <MaterialCommunityIcons name={iconMap.ambientTempC} size={28} color={getTempColor(profile.ambientTempC)} />
               </TouchableOpacity>
               <Text style={styles.statLabel}>Temp °C</Text>
               <Text style={styles.statValue}>{profile.ambientTempC}</Text>
             </View>
           </View>
 
-          {/* META DE ÁGUA */}
           <View style={styles.waterStatsRow}>
             <View style={styles.waterStatBox}>
               <Text style={styles.statLabel}>Meta Água (dia)</Text>
-              <Text style={styles.statValue}>{waterGoalMl} mL</Text>
+              <Text style={styles.statValue}>
+                {waterGoalMl >= 1000
+                ?`${(waterGoalMl / 1000).toFixed(2)} L` // waterGoalM1 é valor de mL se esse valor for >= 1000 ele divide por 1000 e transforma em Litro
+                :`${waterGoalMl} mL` // senao atender a condicao acima retorna a opcao sem conversao retorna em mL
+                }
+              </Text>
             </View>
             <View style={styles.waterStatBox}>
               <Text style={styles.statLabel}>Por Missão</Text>
@@ -339,14 +285,11 @@ export default function Perfil() {
             </View>
           </View>
 
-          {/* BARRA DE XP */}
           <XPBar currentXP={profile.currentXP} xpToNext={profile.xpToNext} level={profile.level} />
         </View>
 
-        {/* LISTA DE CONQUISTAS */}
         <AchievementMenu achievements={achievements} />
 
-        {/* MODAL PARA EDITAR VALORES */}
         <Modal transparent visible={modalVisible} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>

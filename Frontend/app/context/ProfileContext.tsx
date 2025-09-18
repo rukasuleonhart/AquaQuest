@@ -1,76 +1,69 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { calculateDailyWaterTarget, calculatePerMissionTarget } from "../utils/waterUtils";
+import api from "../services/api";
 
-// ---------------------------
-// Tipos
-// ---------------------------
 export type Profile = {
-  name: string;      // Nome do usuário
-  weightKg: number;  // Peso em kg do usuário
+  id: number;
+  name: string;
+  activityTime: number;
+  weightKg: number;
+  ambientTempC: number;
+  level: number;
+  currentXP: number;
+  xpToNext: number;
 };
 
-// Tipagem do contexto, descreve os dados e funções que o contexto fornece
 type ProfileContextType = {
-  profile: Profile | null;      // Perfil do usuário (pode ser null se ainda não carregou)
-  loading: boolean;             // Indica se o perfil ainda está carregando
-  setProfile: (p: Profile) => void; // Função para atualizar o perfil
+  profile: Profile | null;
+  loading: boolean;
+  dailyWaterTargetMl: number;
+  waterPerMissionMl: number;
 };
 
-// ---------------------------
-// Contexto
-// ---------------------------
 const ProfileContext = createContext<ProfileContextType>({
-  profile: null,              // Inicialmente não há perfil
-  loading: true,              // Inicialmente está carregando
-  setProfile: (_: Profile) => {}, // Função vazia para tipagem segura
+  profile: null,
+  loading: true,
+  dailyWaterTargetMl: 0,
+  waterPerMissionMl: 0,
 });
 
-// ---------------------------
-// Provider
-// ---------------------------
-export const ProfileProvider = ({ children }: { children: React.ReactNode }) => {
-  const [profile, setProfile] = useState<Profile | null>(null); // Estado do perfil
-  const [loading, setLoading] = useState(true); // Estado de carregamento
+export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // ---------------------------
-  // useEffect roda uma vez ao montar o componente
-  // ---------------------------
   useEffect(() => {
-    const loadProfile = async () => {
+    const fetchProfile = async () => {
       try {
-        // Simulação de carregamento de perfil (poderia ser AsyncStorage ou API)
-        const saved: Profile = await Promise.resolve({ name: "Lucas", weightKg: 50 });
-        setProfile(saved); // Atualiza o estado com o perfil carregado
+        const res = await api.get("/perfil");
+        const data: Profile = {
+          id: res.data.id,
+          name: res.data.name,
+          activityTime: res.data.activity_time,
+          weightKg: res.data.weight_kg,
+          ambientTempC: res.data.ambient_temp_c,
+          level: res.data.level,
+          currentXP: res.data.current_xp,
+          xpToNext: res.data.xp_to_next,
+        };
+        setProfile(data);
       } catch (err) {
-        console.error("Erro ao carregar perfil:", err); // Trata erros
+        console.error("Erro ao carregar perfil:", err);
       } finally {
-        setLoading(false); // Marca como carregado, mesmo se houver erro
+        setLoading(false);
       }
     };
+    fetchProfile();
+  }, []);
 
-    loadProfile(); // Executa a função de carregamento
-  }, []); // Array vazio significa que roda apenas uma vez
+  // Cálculos arredondados
+  const dailyWaterTargetMl = profile ? Math.round(calculateDailyWaterTarget(profile.weightKg)) : 0;
+  const waterPerMissionMl = profile ? Math.round(calculatePerMissionTarget(profile.weightKg, 3)) : 0;
 
-  // Apenas para debug no console
-  console.log("ProfileContext atual:", profile);
-
-  // ---------------------------
-  // Provider fornece os dados e funções para os componentes filhos
-  // ---------------------------
   return (
-    <ProfileContext.Provider value={{ profile, loading, setProfile }}>
-      {children} {/* Renderiza todos os componentes filhos */}
+    <ProfileContext.Provider value={{ profile, loading, dailyWaterTargetMl, waterPerMissionMl }}>
+      {children}
     </ProfileContext.Provider>
   );
 };
 
-// ---------------------------
-// Hook de acesso
-// ---------------------------
-export const useProfile = () => {
-  const context = useContext(ProfileContext); // Acessa o contexto
-  if (!context) {
-    // Garante que o hook seja usado dentro de um Provider
-    throw new Error("useProfile deve ser usado dentro de um ProfileProvider");
-  }
-  return context; // Retorna perfil, loading e função setProfile
-};
+export const useProfile = () => useContext(ProfileContext);
