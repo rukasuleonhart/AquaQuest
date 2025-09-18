@@ -1,77 +1,80 @@
 // ---------------------------
 // Importações
 // ---------------------------
-import { LinearGradient } from "expo-linear-gradient"; // Gradientes lineares
-import React, { useEffect, useRef, useState } from "react"; // React e hooks
+import { LinearGradient } from "expo-linear-gradient"; // Permite criar gradientes de cores, usado para a água e botão
+import React, { useEffect, useRef, useState } from "react"; // Importa React e hooks (estado, referência e efeito)
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  PanResponder,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native"; // Componentes e animações do React Native
-import { useHistory } from "../context/HistoryContext"; // Hook do contexto global de histórico
+  Animated, // Para animações
+  Dimensions, // Para pegar o tamanho da tela
+  Easing, // Para controlar o ritmo das animações
+  PanResponder, // Para detectar gestos de toque e arrasto
+  StyleSheet, // Para criar estilos
+  Text, // Componente de texto
+  TouchableOpacity, // Componente de botão clicável
+  View, // Componente container
+} from "react-native"; 
+import { useHistory } from "../context/HistoryContext"; // Hook para acessar e salvar histórico global de consumo
 
 // ---------------------------
 // Constantes da tela
 // ---------------------------
-const { height: SCREEN_HEIGHT } = Dimensions.get("window"); // Altura da tela
+const { height: SCREEN_HEIGHT } = Dimensions.get("window"); // Pega a altura da tela do dispositivo
 
-const MAX_WATER_LEVEL = 1; // Nível máximo do copo (100%)
+const MAX_WATER_LEVEL = 1; // Nível máximo do copo (cheio)
 const MIN_WATER_LEVEL = 0; // Nível mínimo do copo (vazio)
 
 // ---------------------------
 // Componente principal da tela de consumo interativo
 // ---------------------------
 export default function Index() {
-  const { addToHistory } = useHistory(); // Função para adicionar histórico global
+  const { addToHistory } = useHistory(); // Função para adicionar quantidade de água consumida no histórico global
 
-  // Referência animada do nível de água
-  const waterLevel = useRef(new Animated.Value(0.8)).current;
-  const [currentLevel, setCurrentLevel] = useState(0.8);
-  const gestureStartLevel = useRef(0);
+  // Estado e referência do nível de água
+  const waterLevel = useRef(new Animated.Value(0.8)).current; // Valor animado para a altura da água
+  const [currentLevel, setCurrentLevel] = useState(0.8); // Estado do nível atual da água
+  const gestureStartLevel = useRef(0); // Para guardar o nível quando o usuário começa a arrastar
 
-  // Configurações de UI
-  const INSTANT_FILL_DURATION = 300;
-  const cupWidth = 150;
-  const cupHeight = 300;
+  // Configurações visuais
+  const INSTANT_FILL_DURATION = 300; // Tempo para encher instantaneamente
+  const cupWidth = 150; // Largura do copo
+  const cupHeight = 300; // Altura do copo
 
   // ---------------------------
   // Bolhas animadas
   // ---------------------------
-  const bubbleCount = 8;
+  const bubbleCount = 8; // Número de bolhas
   const bubbles = useRef(
     Array.from({ length: bubbleCount }).map(() => ({
-      y: new Animated.Value(cupHeight * Math.random() * 0.85),
-      xOffset: Math.random() * 20 - 10,
-      baseX: Math.random() * cupWidth * 0.7 + 20,
-      size: 4 + Math.random() * 12,
-      speed: 2000 + Math.random() * 2000,
-      fade: new Animated.Value(0),
+      y: new Animated.Value(cupHeight * Math.random() * 0.85), // Posição vertical da bolha
+      xOffset: Math.random() * 20 - 10, // Deslocamento horizontal para movimento
+      baseX: Math.random() * cupWidth * 0.7 + 20, // Posição base horizontal
+      size: 4 + Math.random() * 12, // Tamanho da bolha
+      speed: 2000 + Math.random() * 2000, // Velocidade da animação
+      fade: new Animated.Value(0), // Opacidade da bolha
     }))
   ).current;
 
+  // Efeito para animar as bolhas
   useEffect(() => {
     bubbles.forEach((bubble) => {
       const animate = () => {
-        bubble.y.setValue(cupHeight * 0.85);
-        bubble.fade.setValue(0);
+        bubble.y.setValue(cupHeight * 0.85); // Começa no fundo do copo
+        bubble.fade.setValue(0); // Começa invisível
 
         Animated.parallel([
+          // Movimento vertical
           Animated.timing(bubble.y, {
-            toValue: 0,
-            duration: bubble.speed,
-            easing: Easing.linear,
+            toValue: 0, // Vai até o topo do copo
+            duration: bubble.speed, // Duração
+            easing: Easing.linear, // Movimento constante
             useNativeDriver: true,
           }),
+          // Aparecer e desaparecer (fade)
           Animated.sequence([
             Animated.timing(bubble.fade, { toValue: 1, duration: 300, useNativeDriver: true }),
             Animated.timing(bubble.fade, { toValue: 0, duration: 300, useNativeDriver: true }),
           ]),
-        ]).start(() => animate());
+        ]).start(() => animate()); // Loop infinito
       };
       animate();
     });
@@ -82,73 +85,79 @@ export default function Index() {
   // ---------------------------
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      onStartShouldSetPanResponder: () => true, // Sempre começa responder ao toque
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5, // Responde ao movimento vertical maior que 5px
 
       onPanResponderGrant: () => {
         waterLevel.stopAnimation((value) => {
-          gestureStartLevel.current = value;
+          gestureStartLevel.current = value; // Salva o nível atual ao começar arrastar
         });
       },
 
       onPanResponderMove: (_, g) => {
-        const sensitivity = 200;
-        let newLevel = gestureStartLevel.current - g.dy / sensitivity;
-        newLevel = Math.min(Math.max(newLevel, MIN_WATER_LEVEL), MAX_WATER_LEVEL);
-        waterLevel.setValue(newLevel);
-        setCurrentLevel(newLevel);
+        const sensitivity = 200; 
+        let newLevel = gestureStartLevel.current - g.dy / sensitivity; // Calcula novo nível com base no movimento vertical
+        newLevel = Math.min(Math.max(newLevel, MIN_WATER_LEVEL), MAX_WATER_LEVEL); // Limita entre 0 e 1
+        waterLevel.setValue(newLevel); // Atualiza animação
+        setCurrentLevel(newLevel); // Atualiza estado
       },
 
       onPanResponderRelease: (_, g) => {
-        if (Math.abs(g.dy) < 5) {
+        if (Math.abs(g.dy) < 5) { // Se só tocou sem arrastar
           Animated.timing(waterLevel, {
-            toValue: MAX_WATER_LEVEL,
+            toValue: MAX_WATER_LEVEL, // Preenche o copo
             duration: INSTANT_FILL_DURATION,
             useNativeDriver: false,
           }).start(() => {
-            setCurrentLevel(MAX_WATER_LEVEL);
-            // Apenas salva a quantidade, sem precisar de action
-            addToHistory(Math.round(MAX_WATER_LEVEL * 500));
+            setCurrentLevel(MAX_WATER_LEVEL); 
+            addToHistory(Math.round(MAX_WATER_LEVEL * 500)); // Salva no histórico
           });
         }
       },
     })
   ).current;
 
+  // Altura animada da água
   const waterHeight = waterLevel.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, cupHeight * 0.85],
+    inputRange: [0, 1], // De 0 a 1
+    outputRange: [0, cupHeight * 0.85], // Altura real do copo
   });
 
+  // Cor do texto animada conforme o nível de água
   const waterTextColor = waterLevel.interpolate({
     inputRange: [0, 1],
     outputRange: ["#4facfe", "#007AFF"],
   });
 
-  const waterAmount = Math.round(currentLevel * 500);
+  const waterAmount = Math.round(currentLevel * 500); // Quantidade de água em mL
 
   // ---------------------------
   // Função para beber água
   // ---------------------------
   const handleDrink = () => {
     Animated.timing(waterLevel, {
-      toValue: 0,
-      duration: 2000,
+      toValue: 0, // Reduz para vazio
+      duration: 2000, 
       easing: Easing.ease,
       useNativeDriver: false,
     }).start(() => {
-      setCurrentLevel(0);
-      addToHistory(waterAmount);
+      setCurrentLevel(0); // Atualiza estado
+      addToHistory(waterAmount); // Salva histórico
     });
   };
 
+  // ---------------------------
+  // JSX da tela
+  // ---------------------------
   return (
     <View style={styles.container}>
+      {/* Quantidade de água */}
       <Animated.Text style={[styles.waterAmountText, { color: waterTextColor }]}>
         {waterAmount} mL
       </Animated.Text>
 
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+        {/* Régua lateral */}
         <View style={styles.ruler}>
           {[500, 400, 300, 200, 100, 0].map((mark) => (
             <Text key={mark} style={styles.rulerText}>
@@ -157,18 +166,21 @@ export default function Index() {
           ))}
         </View>
 
+        {/* Copo */}
         <View style={[styles.cup, { width: cupWidth, height: cupHeight }]} {...panResponder.panHandlers}>
+          {/* Água animada */}
           <Animated.View style={[styles.water, { height: waterHeight }]}>
             <LinearGradient
-              colors={["#4facfe", "#00f2fe"]}
+              colors={["#4facfe", "#00f2fe"]} // Gradiente azul
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={{ flex: 1 }}
             />
+            {/* Bolhas dentro da água */}
             {bubbles.map((bubble, i) => {
               const sway = bubble.y.interpolate({
                 inputRange: [0, cupHeight],
-                outputRange: [-bubble.xOffset, bubble.xOffset],
+                outputRange: [-bubble.xOffset, bubble.xOffset], // Movimento horizontal suave
               });
               return (
                 <Animated.View
@@ -187,11 +199,13 @@ export default function Index() {
             })}
           </Animated.View>
 
+          {/* Borda do copo */}
           <View style={styles.cupBorder} pointerEvents="none" />
           <View style={styles.topRim} pointerEvents="none" />
         </View>
       </View>
 
+      {/* Botão de beber */}
       <LinearGradient
         colors={["#4facfe", "#00f2fe"]}
         start={{ x: 0, y: 0 }}
@@ -210,9 +224,9 @@ export default function Index() {
 // Estilos
 // ---------------------------
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#E6F0FF", justifyContent: "center", alignItems: "center" },
-  waterAmountText: { fontSize: 28, fontWeight: "bold", marginBottom: 15, textAlign: "center" },
-  cup: {
+  container: { flex: 1, backgroundColor: "#E6F0FF", justifyContent: "center", alignItems: "center" }, // Container centralizado
+  waterAmountText: { fontSize: 28, fontWeight: "bold", marginBottom: 15, textAlign: "center" }, // Texto da quantidade de água
+  cup: { // Estilo do copo
     overflow: "hidden",
     justifyContent: "flex-end",
     borderBottomLeftRadius: 8,
@@ -223,11 +237,11 @@ const styles = StyleSheet.create({
     transform: [{ scaleX: 1.05 }],
     marginBottom: 30,
   },
-  water: { width: "100%", position: "absolute", bottom: 0 },
-  cupBorder: { ...StyleSheet.absoluteFillObject, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderWidth: 3, borderColor: "rgba(255,255,255,0.6)" },
-  topRim: { position: "absolute", top: 0, left: 0, right: 0, height: 18, backgroundColor: "rgba(255,255,255,0.25)", borderBottomWidth: 2, borderColor: "rgba(255,255,255,0.5)" },
-  drinkButton: { marginTop: 20, borderRadius: 25, paddingVertical: 12, paddingHorizontal: 40 },
-  drinkText: { color: "white", fontSize: 18, fontWeight: "bold", textAlign: "center" },
-  ruler: { marginRight: 10, height: 300, justifyContent: "space-between" },
-  rulerText: { fontSize: 14, fontWeight: "bold", color: "#555" },
+  water: { width: "100%", position: "absolute", bottom: 0 }, // Água dentro do copo
+  cupBorder: { ...StyleSheet.absoluteFillObject, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderWidth: 3, borderColor: "rgba(255,255,255,0.6)" }, // Borda do copo
+  topRim: { position: "absolute", top: 0, left: 0, right: 0, height: 18, backgroundColor: "rgba(255,255,255,0.25)", borderBottomWidth: 2, borderColor: "rgba(255,255,255,0.5)" }, // A borda de cima
+  drinkButton: { marginTop: 20, borderRadius: 25, paddingVertical: 12, paddingHorizontal: 40 }, // Botão de beber
+  drinkText: { color: "white", fontSize: 18, fontWeight: "bold", textAlign: "center" }, // Texto do botão
+  ruler: { marginRight: 10, height: 300, justifyContent: "space-between" }, // Régua lateral do copo
+  rulerText: { fontSize: 14, fontWeight: "bold", color: "#555" }, // Texto da régua
 });
