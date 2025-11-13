@@ -38,7 +38,7 @@ export default function TabsLayout() {
         >
           {/* Aba "Beber" */}
           <Tabs.Screen
-            name="index" // Nome da tela principal (arquivo index.tsx ou index.jsx)
+            name="home" // Nome da tela principal (arquivo index.tsx ou index.jsx)
             options={{
               title: "Beber", // Nome exibido na aba
               tabBarIcon: ({ color }) => ( // Ícone da aba

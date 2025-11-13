@@ -6,19 +6,12 @@ import { Stack } from "expo-router";
  */
 export default function RootLayout() {
   return (
-    <Stack>
-      {/*
-        Stack.Screen representa uma "tela" dentro do Stack Navigator.
-        
-        name="(tabs)":
-        - Faz referência à tela principal de abas do app.
-        - Corresponde a pasta "(tabs)".
-        
-        options={{ headerShown: false }}:
-        - Remove o cabeçalho padrão que o Stack Navigator adiciona automaticamente.
-        - Isso é útil quando o design da tela já possui um header personalizado ou não precisa de um.
-      */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
     </Stack>
   );
 }

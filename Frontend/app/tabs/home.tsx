@@ -12,7 +12,7 @@ import {
   Text, // Componente de texto
   TouchableOpacity, // Componente de botão clicável
   View, // Componente container
-} from "react-native"; 
+} from "react-native";
 import { useHistory } from "../context/HistoryContext"; // Hook para acessar e salvar histórico global de consumo
 
 // ---------------------------
@@ -26,7 +26,7 @@ const MIN_WATER_LEVEL = 0; // Nível mínimo do copo (vazio)
 // ---------------------------
 // Componente principal da tela de consumo interativo
 // ---------------------------
-export default function Index() {
+export default function Home() {
   const { addToHistory } = useHistory(); // Função para adicionar quantidade de água consumida no histórico global
 
   // Estado e referência do nível de água
