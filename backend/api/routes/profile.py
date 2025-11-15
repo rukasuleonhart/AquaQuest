@@ -31,7 +31,7 @@ def create_perfil(profile_create: ProfileSchema, db: Session = Depends(get_db)):
     return new_profile
 
 # Patch - Atualiza campos específicos do perfil pelo ID
-@router.put("/{profile_id}", response_model=ProfileSchema)
+@router.patch("/{profile_id}", response_model=ProfileSchema)
 def update_perfil(
     profile_update: ProfileUpdateSchema,
     profile_id: int,

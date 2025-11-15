@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Text, TextInput, TouchableOpacity, View } from "react-native";
+import api from "../services/api";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
@@ -13,22 +14,40 @@ export default function RegisterScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    setError("");
-    if (!name || !email || !password || !confirmPassword) {
-      setError("Preencha todos os campos.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("As senhas não coincidem!");
-      return;
-    }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+  const handleRegister = async () => {
+  setError("");
+  if (!name || !email || !password || !confirmPassword) {
+    setError("Preencha todos os campos.");
+    return;
+  }
+  if (password !== confirmPassword) {
+    setError("As senhas não coincidem!");
+    return;
+  }
+  setLoading(true);
+
+  try {
+    const response = await api.post("/users", {
+      name: name,
+      email: email,
+      password: password,
+    });
+
+    setLoading(false);
+    if (response.status === 200 || response.status === 201) {
       router.replace("/auth/login");
-    }, 900);
-  };
+    } else {
+      setError(response.data.detail || "Erro ao cadastrar.");
+    }
+  } catch (error) {
+  setLoading(false);
+  const err = error as any;
+  setError(
+    err.response?.data?.detail ||
+    "Erro de conexão."
+  );
+}
+};
 
   return (
     <LinearGradient

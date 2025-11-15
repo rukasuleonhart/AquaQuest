@@ -1,6 +1,7 @@
 from fastapi import FastAPI  # Importa a classe FastAPI, que é usada para criar a aplicação web
 from .routes.history import router as historyRouter  # Importa o "router" das rotas de histórico e dá o nome de historyRouter
-from .routes.profile import router as profileRouter
+from .routes.profile import router as profileRouter  # Importa o "router" das rotas de histórico e dá o nome de profileRouter
+from .routes.user import router as userRouter # Importa o "router" das rotas de histórico e dá o nome de userRouter
 from fastapi.middleware.cors import CORSMiddleware
 
 # Cria uma instância da aplicação FastAPI
@@ -17,6 +18,7 @@ def read_root():
 # Isso permite organizar rotas em arquivos separados e manter o código mais limpo
 app.include_router(historyRouter)
 app.include_router(profileRouter)
+app.include_router(userRouter)
 # adicionando o middleware à nossa aplicação FastAPI
 # Isso permite controlar quem pode acessar a nossa API a partir de outros domínios
 app.add_middleware(

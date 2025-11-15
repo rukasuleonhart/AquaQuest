@@ -11,9 +11,7 @@ class ProfileSchema(BaseModel):
     current_xp: int
     xp_to_next: int
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 class ProfileUpdateSchema(BaseModel):
     name: Optional[str]
@@ -23,3 +21,5 @@ class ProfileUpdateSchema(BaseModel):
     level: Optional[int]
     current_xp: Optional[int]
     xp_to_next: Optional[int]
+
+    model_config = {"from_attributes": True}

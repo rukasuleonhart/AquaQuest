@@ -6,8 +6,9 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from api.models.base import Base
-from api.models.profileModel import Profile   # ⬅ importa a model
-from api.models.historyModel import Historico # ⬅ importa a model
+from api.models.profileModel import Profile   # ⬅ importa a model Profile
+from api.models.historyModel import Historico # ⬅ importa a model Historico
+from api.models.userModel import User # ⬅ importa a model Usuários
 
 # Adiciona a raiz do projeto ao sys.path para importar settings
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
