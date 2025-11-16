@@ -13,13 +13,14 @@ class ProfileSchema(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 class ProfileUpdateSchema(BaseModel):
-    name: Optional[str]
-    activity_time: Optional[int]
-    weight_kg: Optional[float]
-    ambient_temp_c: Optional[float]
-    level: Optional[int]
-    current_xp: Optional[int]
-    xp_to_next: Optional[int]
+    name: Optional[str] = None
+    activity_time: Optional[int] = None
+    weight_kg: Optional[float] = None
+    ambient_temp_c: Optional[float] = None
+    level: Optional[int] = None
+    current_xp: Optional[int] = None
+    xp_to_next: Optional[int] = None
 
     model_config = {"from_attributes": True}
