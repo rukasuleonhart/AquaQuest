@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { calculateDailyWaterTarget, calculatePerMissionTarget } from "../utils/waterUtils";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
+import { calculateDailyWaterTarget, calculatePerMissionTarget } from "../utils/waterUtils";
 
 export type Profile = {
   id: number;

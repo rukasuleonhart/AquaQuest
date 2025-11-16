@@ -1,4 +1,8 @@
 // ------------------- IMPORTAÇÕES -------------------
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -13,8 +17,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import api from "../services/api";
 import { calculateDailyWaterTarget, calculatePerMissionTarget } from "../utils/waterUtils";
 
@@ -50,18 +52,20 @@ type Achievement = {
   completed: boolean;
 };
 
-// ------------------- COMPONENTES -------------------
-
-// Barra de XP
+// XPBar Component
 function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: number; level: number }) {
-  const progress = useMemo(() => Math.max(0, Math.min(1, currentXP / (xpToNext <= 0 ? 1 : xpToNext))), [currentXP, xpToNext]);
+  const progress = useMemo(
+    () => Math.max(0, Math.min(1, currentXP / (xpToNext <= 0 ? 1 : xpToNext))),
+    [currentXP, xpToNext]
+  );
   const width = SCREEN_WIDTH - 64;
-
   return (
     <View style={styles.xpContainer}>
       <View style={styles.xpHeader}>
         <Text style={styles.levelText}>Nível {level}</Text>
-        <Text style={styles.xpText}>{currentXP} / {xpToNext} XP</Text>
+        <Text style={styles.xpText}>
+          {currentXP} / {xpToNext} XP
+        </Text>
       </View>
       <View style={[styles.xpBarBackground, { width }]}>
         <LinearGradient
@@ -76,7 +80,7 @@ function XPBar({ currentXP, xpToNext, level }: { currentXP: number; xpToNext: nu
   );
 }
 
-// Lista de conquistas
+// AchievementMenu Component
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
@@ -105,25 +109,26 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   );
 }
 
-// Mapeia estatísticas para ícones
 const iconMap: Record<keyof Pick<Profile, "weightKg" | "activityTime" | "ambientTempC">, keyof typeof MaterialCommunityIcons.glyphMap> = {
   weightKg: "weight",
   activityTime: "run",
   ambientTempC: "thermometer",
 };
 
-// Interpolação de cores para temperatura
 function interpolateColor(color1: string, color2: string, factor: number) {
   const c1 = parseInt(color1.slice(1), 16);
   const c2 = parseInt(color2.slice(1), 16);
-  const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
-  const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+  const r1 = (c1 >> 16) & 0xff,
+    g1 = (c1 >> 8) & 0xff,
+    b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff,
+    g2 = (c2 >> 8) & 0xff,
+    b2 = c2 & 0xff;
   const r = Math.round(r1 + factor * (r2 - r1));
   const g = Math.round(g1 + factor * (g2 - g1));
   const b = Math.round(b1 + factor * (b2 - b1));
   return `rgb(${r},${g},${b})`;
 }
-
 const getTempColor = (tempC: number) => {
   if (tempC <= 10) return "#007AFF";
   if (tempC <= 20) return interpolateColor("#007AFF", "#FFD700", (tempC - 10) / 10);
@@ -138,6 +143,12 @@ export default function Perfil() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentField, setCurrentField] = useState<keyof Profile | null>(null);
   const [inputValue, setInputValue] = useState("");
+
+  // Função de logout
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem("token");
+    router.replace("/auth/login");
+  };
 
   const fieldMap: Record<keyof Profile, string> = {
     id: "id",
@@ -183,34 +194,37 @@ export default function Perfil() {
   };
 
   const handleSave = async () => {
-    if (!profile || !currentField) return;
+    if (!currentField) return;
     let newValue: any = inputValue.trim();
+
+    // Conversão dos tipos!
     if (["weightKg", "ambientTempC"].includes(currentField)) {
       newValue = parseFloat(newValue.replace(",", "."));
-      if (isNaN(newValue)) return Alert.alert("Valor inválido");
-    } else if (["activityTime", "level", "currentXP", "xpToNext"].includes(currentField)) {
-      newValue = parseInt(newValue);
-      if (isNaN(newValue)) return Alert.alert("Valor inválido");
+      if (isNaN(newValue)) return Alert.alert("Valor inválido!");
+    } else if (
+      ["activityTime", "level", "currentXP", "xpToNext"].includes(currentField)
+    ) {
+      newValue = parseInt(newValue, 10);
+      if (isNaN(newValue)) return Alert.alert("Valor inválido!");
     }
+    // string já está correta (name)
 
-    const payload = {
-      id: profile.id,
-      name: profile.name,
-      activity_time: profile.activityTime,
-      weight_kg: profile.weightKg,
-      ambient_temp_c: profile.ambientTempC,
-      level: profile.level,
-      current_xp: profile.currentXP,
-      xp_to_next: profile.xpToNext,
-      [fieldMap[currentField]]: newValue,
-    };
+    // Só envia campo válido e tipo certo
+    const payload: any = {};
+    payload[fieldMap[currentField]] = newValue;
+
+    console.log("Payload enviado:", payload);
 
     try {
-      await api.put(`/perfil/${profile.id}`, payload);
-      setProfile({ ...profile, [currentField]: newValue });
+      await api.patch("/perfil/", payload);
+      setProfile((prev) => prev ? { ...prev, [currentField]: newValue } : prev);
       setModalVisible(false);
     } catch (err) {
-      Alert.alert("Erro", "Não foi possível salvar a alteração");
+      const errorMsg = err?.response?.data?.detail
+        ? JSON.stringify(err.response.data.detail)
+        : "Não foi possível salvar a alteração";
+      Alert.alert("Erro", errorMsg);
+      console.log("Erro PATCH:", err?.response?.data);
     }
   };
 
@@ -220,7 +234,6 @@ export default function Perfil() {
         <Text style={{ textAlign: "center", marginTop: 40 }}>Carregando...</Text>
       </View>
     );
-
   if (!profile)
     return (
       <View style={styles.container}>
@@ -230,7 +243,6 @@ export default function Perfil() {
 
   const waterGoalMl = calculateDailyWaterTarget(profile.weightKg);
   const waterPerMissionMl = calculatePerMissionTarget(profile.weightKg, 3);
-
   const achievements: Achievement[] = [
     { id: "1", title: "Primeiro Gole", description: "Beba água uma vez", completed: true },
     { id: "2", title: "Dia Produtivo", description: "Complete todas as missões diárias", completed: false },
@@ -241,8 +253,13 @@ export default function Perfil() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.container}>
         <View style={styles.profileCard}>
-          <Text style={styles.profileName}>{profile.name}</Text>
-
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+            <Text style={styles.profileName}>{profile.name}</Text>
+            {/* Botão para editar nome */}
+            <TouchableOpacity onPress={() => handleIconPress("name")} style={{ marginLeft: 8 }}>
+              <MaterialIcons name="edit" size={22} color={PALETTE.text} />
+            </TouchableOpacity>
+          </View>
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <TouchableOpacity onPress={() => handleIconPress("weightKg")}>
@@ -251,7 +268,6 @@ export default function Perfil() {
               <Text style={styles.statLabel}>Peso</Text>
               <Text style={styles.statValue}>{profile.weightKg}</Text>
             </View>
-
             <View style={styles.statBox}>
               <TouchableOpacity onPress={() => handleIconPress("activityTime")}>
                 <MaterialCommunityIcons name={iconMap.activityTime} size={28} color={PALETTE.text} />
@@ -259,7 +275,6 @@ export default function Perfil() {
               <Text style={styles.statLabel}>Ativ. Física</Text>
               <Text style={styles.statValue}>{profile.activityTime} minutos</Text>
             </View>
-
             <View style={styles.statBox}>
               <TouchableOpacity onPress={() => handleIconPress("ambientTempC")}>
                 <MaterialCommunityIcons name={iconMap.ambientTempC} size={28} color={getTempColor(profile.ambientTempC)} />
@@ -268,15 +283,11 @@ export default function Perfil() {
               <Text style={styles.statValue}>{profile.ambientTempC}</Text>
             </View>
           </View>
-
           <View style={styles.waterStatsRow}>
             <View style={styles.waterStatBox}>
               <Text style={styles.statLabel}>Meta Água (dia)</Text>
               <Text style={styles.statValue}>
-                {waterGoalMl >= 1000
-                ?`${(waterGoalMl / 1000).toFixed(2)} L` // waterGoalM1 é valor de mL se esse valor for >= 1000 ele divide por 1000 e transforma em Litro
-                :`${waterGoalMl} mL` // senao atender a condicao acima retorna a opcao sem conversao retorna em mL
-                }
+                {waterGoalMl >= 1000 ? `${(waterGoalMl / 1000).toFixed(2)} L` : `${waterGoalMl} mL`}
               </Text>
             </View>
             <View style={styles.waterStatBox}>
@@ -284,12 +295,12 @@ export default function Perfil() {
               <Text style={styles.statValue}>{Math.round(waterPerMissionMl)} mL</Text>
             </View>
           </View>
-
           <XPBar currentXP={profile.currentXP} xpToNext={profile.xpToNext} level={profile.level} />
         </View>
-
         <AchievementMenu achievements={achievements} />
-
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Sair</Text>
+        </TouchableOpacity>
         <Modal transparent visible={modalVisible} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
@@ -300,7 +311,9 @@ export default function Perfil() {
                     style={styles.input}
                     value={inputValue}
                     onChangeText={setInputValue}
-                    keyboardType="decimal-pad"
+                    keyboardType={
+                      currentField === "name" ? "default" : "decimal-pad"
+                    }
                     autoFocus
                   />
                 </View>
@@ -325,7 +338,7 @@ export default function Perfil() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingVertical: 20, backgroundColor: PALETTE.lightBlue },
   profileCard: { backgroundColor: "#fff", borderRadius: 24, padding: 20, marginHorizontal: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 6, marginBottom: 20 },
-  profileName: { fontSize: 26, fontWeight: "800", color: PALETTE.text, textAlign: "center", marginBottom: 20 },
+  profileName: { fontSize: 26, fontWeight: "800", color: PALETTE.text, textAlign: "center" },
   statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
   statBox: { flex: 1, backgroundColor: "#F5F7FA", borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: 4, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 3 },
   statLabel: { fontSize: 12, color: PALETTE.rulerText, fontWeight: "500", marginTop: 4, marginBottom: 2 },
@@ -353,4 +366,6 @@ const styles = StyleSheet.create({
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   waterStatsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
   waterStatBox: { flex: 1, backgroundColor: "#D0E8FF", borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: 4, alignItems: "center" },
+  logoutButton: { marginTop: 24, backgroundColor: "#FF3B30", borderRadius: 10, paddingVertical: 12, paddingHorizontal: 10, alignItems: "center", marginHorizontal: 40, elevation: 2 },
+  logoutButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16, letterSpacing: 1 },
 });

@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from "../services/api";
 // Importa o gradiente de fundo do Expo
 import { LinearGradient } from "expo-linear-gradient";
 // Importa o sistema de navegação do Expo Router
@@ -6,16 +8,16 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 // Importa vários componentes prontos do React Native
 import {
-    ActivityIndicator, // ícone de carregamento (spinner)
-    Animated, // usado para animações
-    Dimensions, // obtém as dimensões da tela
-    Image, // exibe imagens
-    SafeAreaView, // garante que o conteúdo não fique atrás da barra de status
-    StyleSheet, // cria estilos
-    Text, // texto
-    TextInput, // campo de digitação
-    TouchableOpacity, // botão que pode ser pressionado
-    View, // contêiner para agrupar elementos
+  ActivityIndicator, // ícone de carregamento (spinner)
+  Animated, // usado para animações
+  Dimensions, // obtém as dimensões da tela
+  Image, // exibe imagens
+  SafeAreaView, // garante que o conteúdo não fique atrás da barra de status
+  StyleSheet, // cria estilos
+  Text, // texto
+  TextInput, // campo de digitação
+  TouchableOpacity, // botão que pode ser pressionado
+  View, // contêiner para agrupar elementos
 } from "react-native";
 
 // ====================
@@ -155,36 +157,49 @@ export default function LoginScreen() {
   };
 
   // Função chamada ao clicar no botão "Entrar"
-  const handleLogin = () => {
-    // Limpa os erros anteriores
-    setErrors({ email: false, password: false });
+  const handleLogin = async () => {
+  setErrors({ email: false, password: false });
+  setLoading(true);
 
-    // Verifica se o e-mail é válido e se a senha foi preenchida
-    const emailError = !email || !isValidEmail(email);
-    const passwordError = !password;
+  const emailError = !email || !isValidEmail(email);
+  const passwordError = !password;
+  if (emailError || passwordError) {
+    setErrors({ email: emailError, password: passwordError });
+    setLoading(false);
+    return;
+  }
 
-    // Se tiver erro, marca os campos e sai da função
-    if (emailError || passwordError) {
-      setErrors({ email: emailError, password: passwordError });
-      return;
+  try {
+    // Cria um form para enviar como x-www-form-urlencoded
+    const formData = new URLSearchParams();
+    formData.append("username", email); // usar email como username, de acordo com o backend
+    formData.append("password", password);
+
+    const response = await api.post("/auth/login", formData, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    await AsyncStorage.setItem("token", response.data.access_token);
+
+    // Configura o header Authorization para requisições futuras
+    api.defaults.headers.common["Authorization"] = `Bearer ${response.data.access_token}`;
+
+    setLoading(false);
+    router.replace("/tabs/home");
+  } catch (error) {
+    setLoading(false);
+    const err = error;
+    if (err.response?.data?.detail) {
+      setErrors({ email: true, password: true });
+    } else {
+      setErrors({ email: false, password: false });
+      // Mensagem de falha de conexão pode ser exibida
     }
+  }
+};
 
-    // Mostra o spinner de carregamento
-    setLoading(true);
-
-    // Simula uma requisição ao servidor (1,2 segundos)
-    setTimeout(() => {
-      setLoading(false);
-
-      // Se o login for válido, vai para a tela "home"
-      if (email === "teste@agua.com" && password === "123456") {
-        router.replace("../tabs/home");
-      } else {
-        // Se não for válido, marca erro nos campos
-        setErrors({ email: true, password: true });
-      }
-    }, 1200);
-  };
 
   // ===========================================
   // 🔹 RETORNO VISUAL (O QUE É EXIBIDO NA TELA)

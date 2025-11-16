@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from ..schemas.userSchema import UserCreate, UserRead, UserUpdate
 from ..models.userModel import User
-from ..models.profileModel import Profile  # Importa o model de Profile
+from ..models.profileModel import Profile
+from api.models.historyModel import Historico
 from sqlalchemy.orm import Session
 from api.database import get_db
 from api.security import hash_password, verify_password
@@ -27,15 +28,22 @@ def criar_usuario(user_create: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    # Cria o perfil apenas com os campos obrigatórios
+    # Cria o perfil
     new_profile = Profile(
         user_id=new_user.id,
         name=new_user.name
-        # Todos os outros campos usarão o default do model
     )
     db.add(new_profile)
     db.commit()
     db.refresh(new_profile)
+
+    # Cria o histórico inicial (AMOUNT inicial como exemplo)
+    historico_inicial = Historico(
+        profile_id=new_profile.id,
+        amount=0.0  # ou o valor inicial desejado
+    )
+    db.add(historico_inicial)
+    db.commit()
 
     # Retorna o usuário criado (com ou sem profile, conforme seu schema)
     return new_user
@@ -60,5 +68,4 @@ def atualizar_usuario(user_update: UserUpdate, user_id: int, db: Session = Depen
     
     db.commit()
     db.refresh(user)
-
     return user
