@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo } from "react";
-import { Dimensions, FlatList, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useHistory } from "../context/HistoryContext";
 import { useProfile } from "../context/ProfileContext";
 import { filterHistory } from "../utils/historyUtils";
@@ -22,9 +22,10 @@ type QuestWithProgress = Quest & { progress: number };
 
 export default function RPGQuestsScreen() {
   const { history } = useHistory();
-  const { profile, waterPerMissionMl, extraMissionMl } = useProfile();
+  const { profile, waterPerMissionMl, extraMissionMl, addXP } = useProfile();
 
-  // ------------------- DEFINIÇÃO DAS MISSÕES -------------------
+  const [rewardedQuests, setRewardedQuests] = useState<Set<string>>(new Set());
+
   const quests: Quest[] = useMemo(() => {
     if (!profile) return [];
 
@@ -81,7 +82,6 @@ export default function RPGQuestsScreen() {
       },
     ];
 
-    // Missão extra baseada em tempo de exercício + temperatura
     if (extraMissionMl > 0) {
       baseQuests.push({
         id: "d_extra",
@@ -98,7 +98,6 @@ export default function RPGQuestsScreen() {
     return baseQuests;
   }, [profile, waterPerMissionMl, extraMissionMl]);
 
-  // ------------------- CÁLCULO DE PROGRESSO -------------------
   const questsProgress: QuestWithProgress[] = useMemo(() => {
     if (!profile) return [];
 
@@ -142,20 +141,35 @@ export default function RPGQuestsScreen() {
     });
   }, [history, quests, profile, waterPerMissionMl]);
 
-  // ------------------- RENDERIZAÇÃO DE CADA MISSÃO -------------------
+  const gradients = {
+    daily: ["#3B82F6", "#60A5FA"],
+    weekly: ["#FBBF24", "#FCD34D"],
+    monthly: ["#EF4444", "#F87171"],
+  } as const;
+  const completedGradient = ["#4ADE80", "#22C55E"];
+
+  const handleRewardQuest = async (quest: QuestWithProgress) => {
+    const completed = quest.progress >= quest.target;
+    if (!completed) return;
+
+    setRewardedQuests((prev) => {
+      if (prev.has(quest.id)) return prev;
+      const clone = new Set(prev);
+      clone.add(quest.id);
+      return clone;
+    });
+
+    // mesmo se o set ainda não refletiu, chamar addXP é ok porque a checagem de duplicidade está no estado
+    await addXP(quest.reward);
+  };
+
   const renderQuest = (item: QuestWithProgress) => {
     const completed = item.progress >= item.target;
     const progressPercent = Math.min(
       Math.round((item.progress / item.target) * 100),
       100
     );
-
-    const gradients = {
-      daily: ["#3B82F6", "#60A5FA"],
-      weekly: ["#FBBF24", "#FCD34D"],
-      monthly: ["#EF4444", "#F87171"],
-    };
-    const completedGradient = ["#4ADE80", "#22C55E"];
+    const alreadyRewarded = rewardedQuests.has(item.id);
 
     return (
       <View
@@ -178,7 +192,7 @@ export default function RPGQuestsScreen() {
         >
           Recompensa: +{item.reward} XP 🏆
         </Text>
-        <View className="progressBarBackground" style={styles.progressBarBackground}>
+        <View style={styles.progressBarBackground}>
           <LinearGradient
             colors={completed ? completedGradient : gradients[item.type]}
             start={{ x: 0, y: 0 }}
@@ -191,13 +205,21 @@ export default function RPGQuestsScreen() {
           {item.unit === "missions" ? "missões" : "mL"}
         </Text>
         {completed && (
-          <Text style={styles.completedText}>Missão Concluída! ✅</Text>
+          <TouchableOpacity
+            onPress={() => handleRewardQuest(item)}
+            disabled={alreadyRewarded}
+          >
+            <Text style={styles.completedText}>
+              {alreadyRewarded
+                ? "Recompensa recebida ✅"
+                : "Missão Concluída! Toque para receber XP ✅"}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     );
   };
 
-  // ------------------- SEÇÃO HORIZONTAL -------------------
   const renderSection = (title: string, data: QuestWithProgress[]) => (
     <>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -218,7 +240,6 @@ export default function RPGQuestsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Missões</Text>
 
-      {/* Missão extra separada, acima das diárias */}
       {questsProgress.some((q) => q.id === "d_extra") &&
         renderSection(
           "Missão Extra (Exercício)",
@@ -243,7 +264,6 @@ export default function RPGQuestsScreen() {
   );
 }
 
-// ------------------- ESTILOS -------------------
 const styles = StyleSheet.create({
   container: { flex: 1, paddingVertical: 20, backgroundColor: "#F5F9FF" },
   title: {

@@ -25,6 +25,7 @@ type ProfileContextType = {
   extraMissionMl: number;
   refreshProfile: () => Promise<void>;
   updateProfileField: (field: keyof Profile, value: any) => Promise<void>;
+  addXP: (amount: number) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextType>({
@@ -35,6 +36,7 @@ const ProfileContext = createContext<ProfileContextType>({
   extraMissionMl: 0,
   refreshProfile: async () => {},
   updateProfileField: async () => {},
+  addXP: async () => {},
 });
 
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -70,7 +72,9 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const refreshProfile = async () => {
     await fetchProfile();
+    console.log("PROFILE APÓS refreshProfile", profile);
   };
+
 
   const updateProfileField = async (field: keyof Profile, value: any) => {
     const backendMap: Record<keyof Profile, string> = {
@@ -90,6 +94,21 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await api.patch("/perfil/", payload);
     await refreshProfile();
   };
+
+  // adiciona XP (backend faz o cálculo de level/xp_to_next)
+  const addXP = async (amount: number) => {
+    if (!profile || amount <= 0) return;
+    console.log("addXP chamado", { amount, userId: profile.id });
+
+    try {
+      const res = await api.patch("/perfil/", { add_xp: amount });
+      console.log("PATCH /perfil/ OK", res.status, res.data);
+      await refreshProfile();
+    } catch (err) {
+      console.log("ERRO PATCH /perfil/", err);
+    }
+  };
+
 
   const dailyWaterTargetMl = profile
     ? Math.round(calculateDailyWaterTarget(profile.weightKg))
@@ -115,6 +134,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
         extraMissionMl,
         refreshProfile,
         updateProfileField,
+        addXP,
       }}
     >
       {children}

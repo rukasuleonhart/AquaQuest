@@ -23,4 +23,7 @@ class ProfileUpdateSchema(BaseModel):
     current_xp: Optional[int] = None
     xp_to_next: Optional[int] = None
 
+    # NOVO: campo para somar XP
+    add_xp: Optional[int] = None
+
     model_config = {"from_attributes": True}

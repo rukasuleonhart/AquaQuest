@@ -49,25 +49,28 @@ def update_perfil(
     if not profile:
         raise HTTPException(status_code=404, detail="Perfil não encontrado")
 
-    # Atualiza campos do perfil, usando exclude_unset para pegar só os enviados
+    # 1) aplica add_xp, se vier
+    if profile_update.add_xp is not None and profile_update.add_xp > 0:
+        profile.current_xp += profile_update.add_xp
+
+        # regra de level up
+        while profile.current_xp >= profile.xp_to_next:
+            profile.current_xp -= profile.xp_to_next
+            profile.level += 1
+            profile.xp_to_next += 100
+
+    # 2) atualiza demais campos enviados (sem add_xp)
     update_data = profile_update.model_dump(exclude_unset=True)
+    update_data.pop("add_xp", None)  # garante que não tente setar add_xp como coluna
+
     for key, value in update_data.items():
         setattr(profile, key, value)
-
-    # Caso queira atualizar dados do próprio usuário (email, username, senha)
-    # Exemplo: se o ProfileUpdateSchema tiver esses campos
-    if hasattr(profile_update, "email") and profile_update.email is not None:
-        current_user.email = profile_update.email
-    if hasattr(profile_update, "username") and profile_update.username is not None:
-        current_user.username = profile_update.username
-    if hasattr(profile_update, "password") and profile_update.password is not None:
-        current_user.password = hash_password(profile_update.password)
 
     try:
         db.commit()
         db.refresh(profile)
         return profile
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro ao atualizar perfil")
  
