@@ -1,57 +1,71 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 
-from ..schemas.historySchema import HistorySchema, CreateHistorySchema
-from ..database import get_db
-from ..models.historyModel import Historico
-from ..security import get_current_user        # ← Importa a dependência
-from ..models.userModel import User            # ← Modelo de usuário
+from ..schemas.userSchema import UserCreate, UserRead, UserUpdate
+from ..models.userModel import User
+from ..models.profileModel import Profile
+from api.database import get_db
+from api.security import hash_password
 
-router = APIRouter(prefix='/historico', tags=['🕑 Histórico'])
+router = APIRouter(prefix="/users", tags=["👤 Usuários"])
 
-# GET - Mostrar todos os registros do usuário autenticado
-@router.get("/", response_model=List[HistorySchema], status_code=status.HTTP_200_OK)
-async def Mostrar_Historico(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.profiles or len(current_user.profiles) == 0:
-        raise HTTPException(status_code=404, detail="Usuário não possui perfil cadastrado")
-    profile_id = current_user.profiles[0].id
-    water_registers = db.query(Historico).filter(Historico.profile_id == profile_id).all()
-    return [HistorySchema.model_validate(w) for w in water_registers]
 
-# POST - Registrar novo histórico
-@router.post("/", response_model=HistorySchema, status_code=status.HTTP_201_CREATED)
-async def Registrar_no_Historico(
-    water: CreateHistorySchema,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.profiles or len(current_user.profiles) == 0:
-        raise HTTPException(status_code=400, detail="Usuário não possui perfil cadastrado")
-    profile_id = current_user.profiles[0].id  # Altere a lógica se necessário para pegar o perfil correto
-    newHistorico = Historico(**water.model_dump(), profile_id=profile_id)
-    db.add(newHistorico)
+# POST - Criar novo usuário (somente se não existir)
+@router.post("/", response_model=UserRead)
+def criar_usuario(user_create: UserCreate, db: Session = Depends(get_db)):
+    # Checa se já existe o usuário
+    existing_user = db.query(User).filter(User.email == user_create.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Esse Usuário já existe!")
+
+    # Cria o usuário
+    hashed_password = hash_password(user_create.password)
+    new_user = User(
+        name=user_create.name,
+        email=user_create.email,
+        hashed_password=hashed_password
+    )
+    db.add(new_user)
     db.commit()
-    db.refresh(newHistorico)
-    return HistorySchema.model_validate(newHistorico)
+    db.refresh(new_user)
 
-# DELETE - Excluir histórico
-@router.delete("/{id}", response_model=HistorySchema, status_code=status.HTTP_200_OK)
-async def Excluir_no_Historico(
-    id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.profiles or len(current_user.profiles) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não possui perfil cadastrado")
-    profile_id = current_user.profiles[0].id
-    registro = db.query(Historico).filter(Historico.id == id, Historico.profile_id == profile_id).first()
-    if not registro:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Registro com id {id} não encontrado")
-    db.delete(registro)
+    # Cria o perfil
+    new_profile = Profile(
+        user_id=new_user.id,
+        name=new_user.name
+    )
+    db.add(new_profile)
     db.commit()
-    return HistorySchema.model_validate(registro)
+    db.refresh(new_profile)
+
+    # NÃO cria mais histórico inicial com amount=0.0
+    # O primeiro registro será criado no POST /historico
+
+    return new_user
+
+
+# PATCH - Atualizar Usuário
+@router.patch("/{user_id}", response_model=UserUpdate)
+def atualizar_usuario(
+    user_update: UserUpdate,
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado!")
+
+    update_data = user_update.model_dump(exclude_unset=True)
+
+    # Se vier "password", já transforma em hash
+    if "password" in update_data:
+        update_data["hashed_password"] = hash_password(update_data["password"])
+        update_data.pop("password")
+
+    # Atualizar os campos dinamicamente
+    for field, value in update_data.items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user

@@ -1,71 +1,77 @@
-from fastapi import APIRouter, Depends, HTTPException
-from ..schemas.userSchema import UserCreate, UserRead, UserUpdate
-from ..models.userModel import User
-from ..models.profileModel import Profile
-from api.models.historyModel import Historico
+from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.orm import Session
-from api.database import get_db
-from api.security import hash_password, verify_password
+from typing import List
 
-router = APIRouter(prefix="/users", tags=["👤 Usuários"])
+from ..schemas.historySchema import HistorySchema, CreateHistorySchema
+from ..database import get_db
+from ..models.historyModel import Historico
+from ..security import get_current_user      # ← Importa a dependência
+from ..models.userModel import User          # ← Modelo de usuário
 
-# POST - Criar novo usuário (somente se não existir)
-@router.post("/", response_model=UserRead)
-def criar_usuario(user_create: UserCreate, db: Session = Depends(get_db)):
-    # Checa se já existe o usuário
-    existing_user = db.query(User).filter(User.email == user_create.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Esse Usuário já existe!")
+router = APIRouter(prefix='/historico', tags=['🕑 Histórico'])
 
-    # Cria o usuário
-    hashed_password = hash_password(user_create.password)
-    new_user = User(
-        name=user_create.name,
-        email=user_create.email,
-        hashed_password=hashed_password
+
+# GET - Mostrar todos os registros do usuário autenticado
+@router.get("/", response_model=List[HistorySchema], status_code=status.HTTP_200_OK)
+async def Mostrar_Historico(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.profiles or len(current_user.profiles) == 0:
+        raise HTTPException(status_code=404, detail="Usuário não possui perfil cadastrado")
+
+    profile_id = current_user.profiles[0].id
+    water_registers = (
+        db.query(Historico)
+        .filter(Historico.profile_id == profile_id)
+        .all()
     )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    return [HistorySchema.model_validate(w) for w in water_registers]
 
-    # Cria o perfil
-    new_profile = Profile(
-        user_id=new_user.id,
-        name=new_user.name
+
+# POST - Registrar novo histórico
+@router.post("/", response_model=HistorySchema, status_code=status.HTTP_201_CREATED)
+async def Registrar_no_Historico(
+    water: CreateHistorySchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.profiles or len(current_user.profiles) == 0:
+        raise HTTPException(status_code=400, detail="Usuário não possui perfil cadastrado")
+
+    profile_id = current_user.profiles[0].id  # Ajuste se tiver múltiplos perfis
+    newHistorico = Historico(**water.model_dump(), profile_id=profile_id)
+    db.add(newHistorico)
+    db.commit()
+    db.refresh(newHistorico)
+    return HistorySchema.model_validate(newHistorico)
+
+
+# DELETE - Excluir histórico
+@router.delete("/{id}", response_model=HistorySchema, status_code=status.HTTP_200_OK)
+async def Excluir_no_Historico(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.profiles or len(current_user.profiles) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não possui perfil cadastrado"
+        )
+
+    profile_id = current_user.profiles[0].id
+    registro = (
+        db.query(Historico)
+        .filter(Historico.id == id, Historico.profile_id == profile_id)
+        .first()
     )
-    db.add(new_profile)
+    if not registro:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Registro com id {id} não encontrado"
+        )
+
+    db.delete(registro)
     db.commit()
-    db.refresh(new_profile)
-
-    # Cria o histórico inicial (AMOUNT inicial como exemplo)
-    historico_inicial = Historico(
-        profile_id=new_profile.id,
-        amount=0.0  # ou o valor inicial desejado
-    )
-    db.add(historico_inicial)
-    db.commit()
-
-    # Retorna o usuário criado (com ou sem profile, conforme seu schema)
-    return new_user
-
-# PATCH - Atualizar Usuário
-@router.patch("/{user_id}", response_model=UserUpdate)
-def atualizar_usuario(user_update: UserUpdate, user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado!")
-    
-    update_data = user_update.model_dump(exclude_unset=True)
-
-    # Se vier "password", já transforma em hash
-    if "password" in update_data:
-        update_data["hashed_password"] = hash_password(update_data["password"])
-        update_data.pop("password")
-    
-    # Atualizar os campos dinamicamente
-    for field, value in update_data.items():
-        setattr(user, field, value)
-    
-    db.commit()
-    db.refresh(user)
-    return user
+    return HistorySchema.model_validate(registro)
