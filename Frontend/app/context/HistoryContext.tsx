@@ -19,6 +19,7 @@ type HistoryContextType = {
   history: HistoryItem[];            // Lista de registros
   addToHistory: (amount: number) => void; // Adiciona novo registro
   removeFromHistory: (id: number) => void; // Remove registro pelo ID
+  hasFirstDrink: boolean; // Se já existe algum registro de agua para conquista primeiro gole
 };
 
 // ---------------------------
@@ -79,13 +80,17 @@ export const HistoryProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ---------------------------
-  // Retorna o provider com valores e funções disponíveis globalmente
+  // Conquista Primeiro Gole
   // ---------------------------
+  const hasFirstDrink = history.length > 0;
+
   return (
-    <HistoryContext.Provider value={{ history, addToHistory, removeFromHistory }}>
+    <HistoryContext.Provider
+      value={{ history, addToHistory, removeFromHistory, hasFirstDrink }}
+    >
       {children}
     </HistoryContext.Provider>
-  );
+  )
 };
 
 // ---------------------------

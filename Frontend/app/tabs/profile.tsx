@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useHistory } from '../context/HistoryContext';
 import api from '../services/api';
 import { calculateDailyWaterTarget, calculatePerMissionTarget } from '../utils/waterUtils';
 
@@ -50,7 +51,10 @@ type Achievement = {
   completed: boolean;
 };
 
-const iconMap: Record<keyof Pick<Profile, 'weight_kg' | 'activity_time' | 'ambient_temp_c'>, keyof typeof MaterialCommunityIcons.glyphMap> = {
+const iconMap: Record<
+  keyof Pick<Profile, 'weight_kg' | 'activity_time' | 'ambient_temp_c'>,
+  keyof typeof MaterialCommunityIcons.glyphMap
+> = {
   weight_kg: 'weight',
   activity_time: 'run',
   ambient_temp_c: 'thermometer',
@@ -59,8 +63,12 @@ const iconMap: Record<keyof Pick<Profile, 'weight_kg' | 'activity_time' | 'ambie
 function interpolateColor(color1: string, color2: string, factor: number) {
   const c1 = parseInt(color1.slice(1), 16);
   const c2 = parseInt(color2.slice(1), 16);
-  const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
-  const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+  const r1 = (c1 >> 16) & 0xff,
+    g1 = (c1 >> 8) & 0xff,
+    b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff,
+    g2 = (c2 >> 8) & 0xff,
+    b2 = c2 & 0xff;
   const r = Math.round(r1 + factor * (r2 - r1));
   const g = Math.round(g1 + factor * (g2 - g1));
   const b = Math.round(b1 + factor * (b2 - b1));
@@ -79,6 +87,21 @@ export default function Perfil() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentField, setCurrentField] = useState<keyof Profile | null>(null);
   const [inputValue, setInputValue] = useState('');
+
+  // conquista “Primeiro Gole” vinda do contexto de histórico
+  const { hasFirstDrink } = useHistory();
+
+  // controle do popup de conquista
+  const [achievementPopupVisible, setAchievementPopupVisible] = useState(false);
+  const hasFirstDrinkRef = useRef(hasFirstDrink);
+
+  // abre popup quando hasFirstDrink muda de false -> true
+  useEffect(() => {
+    if (!hasFirstDrinkRef.current && hasFirstDrink) {
+      setAchievementPopupVisible(true);
+    }
+    hasFirstDrinkRef.current = hasFirstDrink;
+  }, [hasFirstDrink]);
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
@@ -112,10 +135,10 @@ export default function Perfil() {
   const handleSave = async () => {
     if (!currentField) return;
     let newValue: any = inputValue.trim();
-    if (["weight_kg", "ambient_temp_c"].includes(currentField)) {
-      newValue = parseFloat(newValue.replace(",", "."));
+    if (['weight_kg', 'ambient_temp_c'].includes(currentField)) {
+      newValue = parseFloat(newValue.replace(',', '.'));
       if (isNaN(newValue)) return Alert.alert('Valor inválido!');
-    } else if (["activity_time", "level", "current_xp", "xp_to_next"].includes(currentField)) {
+    } else if (['activity_time', 'level', 'current_xp', 'xp_to_next'].includes(currentField)) {
       newValue = parseInt(newValue, 10);
       if (isNaN(newValue)) return Alert.alert('Valor inválido!');
     }
@@ -148,28 +171,36 @@ export default function Perfil() {
   if (!profile)
     return (
       <View style={styles.container}>
-        <Text style={{ textAlign: 'center', marginTop: 40 }}>
-          Erro ao carregar perfil
-        </Text>
+        <Text style={{ textAlign: 'center', marginTop: 40 }}>Erro ao carregar perfil</Text>
       </View>
     );
 
   const waterGoalMl = calculateDailyWaterTarget(profile.weight_kg);
   const waterPerMissionMl = calculatePerMissionTarget(profile.weight_kg, 3);
   const achievements: Achievement[] = [
-    { id: '1', title: 'Primeiro Gole', description: 'Beba água uma vez', completed: true },
+    { id: '1', title: 'Primeiro Gole', description: 'Beba água uma vez', completed: hasFirstDrink },
     { id: '2', title: 'Dia Produtivo', description: 'Complete todas as missões diárias', completed: false },
     { id: '3', title: 'Resiliência', description: 'Beba água 30 dias consecutivos', completed: false },
   ];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View style={styles.container}>
         <View style={styles.profileCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 20,
+            }}
+          >
             <Text style={styles.profileName}>{profile.name}</Text>
             <TouchableOpacity onPress={() => handleIconPress('name')} style={{ marginLeft: 8 }}>
-              <MaterialIcons name='edit' size={22} color={PALETTE.text} />
+              <MaterialIcons name="edit" size={22} color={PALETTE.text} />
             </TouchableOpacity>
           </View>
           <View style={styles.statsRow}>
@@ -189,7 +220,11 @@ export default function Perfil() {
             </View>
             <View style={styles.statBox}>
               <TouchableOpacity onPress={() => handleIconPress('ambient_temp_c')}>
-                <MaterialCommunityIcons name={iconMap.ambient_temp_c} size={28} color={getTempColor(profile.ambient_temp_c)} />
+                <MaterialCommunityIcons
+                  name={iconMap.ambient_temp_c}
+                  size={28}
+                  color={getTempColor(profile.ambient_temp_c)}
+                />
               </TouchableOpacity>
               <Text style={styles.statLabel}>Temp °C</Text>
               <Text style={styles.statValue}>{profile.ambient_temp_c}</Text>
@@ -207,13 +242,19 @@ export default function Perfil() {
               <Text style={styles.statValue}>{Math.round(waterPerMissionMl)} mL</Text>
             </View>
           </View>
-          <XPBar current_xp={profile.current_xp} xp_to_next={profile.xp_to_next} level={profile.level} />
+          <XPBar
+            current_xp={profile.current_xp}
+            xp_to_next={profile.xp_to_next}
+            level={profile.level}
+          />
         </View>
         <AchievementMenu achievements={achievements} />
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Sair</Text>
         </TouchableOpacity>
-        <Modal transparent visible={modalVisible} animationType='fade'>
+
+        {/* Modal de edição existente */}
+        <Modal transparent visible={modalVisible} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalText}>Alterar valor:</Text>
@@ -229,13 +270,42 @@ export default function Perfil() {
                 </View>
               )}
               <View style={styles.modalButtons}>
-                <TouchableOpacity style={[styles.button, { backgroundColor: '#007AFF' }]} onPress={handleSave}>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: '#007AFF' }]}
+                  onPress={handleSave}
+                >
                   <Text style={styles.buttonText}>Salvar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, { backgroundColor: '#FF3B30' }]} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: '#FF3B30' }]}
+                  onPress={() => setModalVisible(false)}
+                >
                   <Text style={styles.buttonText}>Cancelar</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Popup de conquista */}
+        <Modal
+          transparent
+          visible={achievementPopupVisible}
+          animationType="fade"
+          onRequestClose={() => setAchievementPopupVisible(false)}
+        >
+          <View style={styles.achievementOverlay}>
+            <View style={styles.achievementPopup}>
+              <Text style={styles.achievementPopupTitle}>Conquista desbloqueada!</Text>
+              <Text style={styles.achievementPopupText}>
+                Primeiro Gole - Beba água uma vez
+              </Text>
+              <TouchableOpacity
+                style={styles.achievementPopupButton}
+                onPress={() => setAchievementPopupVisible(false)}
+              >
+                <Text style={styles.achievementPopupButtonText}>Ok</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -244,7 +314,15 @@ export default function Perfil() {
   );
 }
 
-function XPBar({ current_xp, xp_to_next, level }: { current_xp: number; xp_to_next: number; level: number }) {
+function XPBar({
+  current_xp,
+  xp_to_next,
+  level,
+}: {
+  current_xp: number;
+  xp_to_next: number;
+  level: number;
+}) {
   const progress = useMemo(
     () => Math.max(0, Math.min(1, current_xp / (xp_to_next <= 0 ? 1 : xp_to_next))),
     [current_xp, xp_to_next]
@@ -258,7 +336,7 @@ function XPBar({ current_xp, xp_to_next, level }: { current_xp: number; xp_to_ne
           {current_xp} / {xp_to_next} XP
         </Text>
       </View>
-      <View style={[styles.xpBarBackground, { width }]}> 
+      <View style={[styles.xpBarBackground, { width }]}>
         <LinearGradient
           colors={['#4facfe', '#00f2fe']}
           start={{ x: 0, y: 0 }}
@@ -266,7 +344,9 @@ function XPBar({ current_xp, xp_to_next, level }: { current_xp: number; xp_to_ne
           style={[styles.xpBarFill, { width: width * progress }]}
         />
       </View>
-      <Text style={styles.xpMissingText}>{Math.max(0, xp_to_next - current_xp)} XP para o próximo nível</Text>
+      <Text style={styles.xpMissingText}>
+        {Math.max(0, xp_to_next - current_xp)} XP para o próximo nível
+      </Text>
     </View>
   );
 }
@@ -302,10 +382,34 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
 // --- ESTILO CSS ---
 const styles = StyleSheet.create({
   container: { flex: 1, paddingVertical: 20, backgroundColor: PALETTE.lightBlue },
-  profileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 6, marginBottom: 20 },
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    marginHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 6,
+    marginBottom: 20,
+  },
   profileName: { fontSize: 26, fontWeight: '800', color: PALETTE.text, textAlign: 'center' },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  statBox: { flex: 1, backgroundColor: '#F5F7FA', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: 4, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 3 },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 3,
+  },
   statLabel: { fontSize: 12, color: PALETTE.rulerText, fontWeight: '500', marginTop: 4, marginBottom: 2 },
   statValue: { fontSize: 18, fontWeight: '700', color: PALETTE.text },
   xpContainer: { marginTop: 8 },
@@ -315,8 +419,24 @@ const styles = StyleSheet.create({
   xpBarBackground: { height: 20, borderRadius: 14, backgroundColor: '#E3E7FF', overflow: 'hidden' },
   xpBarFill: { height: '100%', borderRadius: 14 },
   xpMissingText: { marginTop: 6, fontSize: 13, color: PALETTE.rulerText },
-  achievementContainer: { marginHorizontal: 20, backgroundColor: PALETTE.cardBg, borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 4 },
-  achievementTitle: { fontSize: 22, fontWeight: '700', marginBottom: 18, color: PALETTE.text, textAlign: 'center' },
+  achievementContainer: {
+    marginHorizontal: 20,
+    backgroundColor: PALETTE.cardBg,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  achievementTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 18,
+    color: PALETTE.text,
+    textAlign: 'center',
+  },
   achievementItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   achievementIcon: { width: 36, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   achievementInfo: { flex: 1 },
@@ -326,11 +446,79 @@ const styles = StyleSheet.create({
   modalContainer: { width: '80%', backgroundColor: '#fff', padding: 20, borderRadius: 16, alignItems: 'center' },
   modalText: { fontSize: 16, marginBottom: 12 },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  input: { borderWidth: 1, borderColor: '#CCC', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, width: 120, textAlign: 'center' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    width: 120,
+    textAlign: 'center',
+  },
   button: { flex: 1, paddingVertical: 10, borderRadius: 8, marginHorizontal: 5, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   waterStatsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  waterStatBox: { flex: 1, backgroundColor: '#D0E8FF', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: 4, alignItems: 'center' },
-  logoutButton: { marginTop: 24, backgroundColor: '#FF3B30', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center', marginHorizontal: 40, elevation: 2 },
+  waterStatBox: {
+    flex: 1,
+    backgroundColor: '#D0E8FF',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+  logoutButton: {
+    marginTop: 24,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    marginHorizontal: 40,
+    elevation: 2,
+  },
   logoutButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+
+  // estilos do popup de conquista
+  achievementOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  achievementPopup: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  achievementPopupTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#007AFF',
+  },
+  achievementPopupText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+    color: '#333',
+  },
+  achievementPopupButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  achievementPopupButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
