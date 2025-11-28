@@ -75,7 +75,7 @@ export default function TabsLayout() {
             options={{
               title: "Missões",
               tabBarIcon: ({ color }) => (
-                <MaterialCommunityIcons name="sword" size={24} color={color} />
+                <MaterialCommunityIcons name="email-outline" size={24} color={color} />
               ),
             }}
           />

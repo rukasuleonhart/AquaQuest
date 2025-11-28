@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "../services/api";
-import { calculateDailyWaterTarget, calculatePerMissionTarget } from "../utils/waterUtils";
+import {
+  calculateDailyWaterTarget,
+  calculateExtraExerciseMission,
+  calculatePerMissionTarget,
+} from "../utils/waterUtils";
 
 export type Profile = {
   id: number;
@@ -18,6 +22,7 @@ type ProfileContextType = {
   loading: boolean;
   dailyWaterTargetMl: number;
   waterPerMissionMl: number;
+  extraMissionMl: number;
 };
 
 const ProfileContext = createContext<ProfileContextType>({
@@ -25,6 +30,7 @@ const ProfileContext = createContext<ProfileContextType>({
   loading: true,
   dailyWaterTargetMl: 0,
   waterPerMissionMl: 0,
+  extraMissionMl: 0,
 });
 
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -55,12 +61,30 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchProfile();
   }, []);
 
-  // Cálculos arredondados
-  const dailyWaterTargetMl = profile ? Math.round(calculateDailyWaterTarget(profile.weightKg)) : 0;
-  const waterPerMissionMl = profile ? Math.round(calculatePerMissionTarget(profile.weightKg, 3)) : 0;
+  const dailyWaterTargetMl = profile
+    ? Math.round(calculateDailyWaterTarget(profile.weightKg))
+    : 0;
+
+  const waterPerMissionMl = profile
+    ? Math.round(calculatePerMissionTarget(profile.weightKg, 3))
+    : 0;
+
+  const extraMissionMl = profile
+    ? Math.round(
+        calculateExtraExerciseMission(profile.activityTime, profile.ambientTempC)
+      )
+    : 0;
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, dailyWaterTargetMl, waterPerMissionMl }}>
+    <ProfileContext.Provider
+      value={{
+        profile,
+        loading,
+        dailyWaterTargetMl,
+        waterPerMissionMl,
+        extraMissionMl,
+      }}
+    >
       {children}
     </ProfileContext.Provider>
   );
