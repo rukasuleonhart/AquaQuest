@@ -6,14 +6,17 @@ import React, { useEffect, useRef, useState } from "react"; // Importa React e h
 import {
   Animated, // Para animações
   Dimensions, // Para pegar o tamanho da tela
-  Easing, // Para controlar o ritmo das animações
+  Easing, // Componente container
+  Modal, // Para controlar o ritmo das animações
   PanResponder, // Para detectar gestos de toque e arrasto
   StyleSheet, // Para criar estilos
-  Text, // Componente de texto
+  Text, // Modal para valor personalizado
+  TextInput, // Componente de texto
   TouchableOpacity, // Componente de botão clicável
   View, // Componente container
 } from "react-native";
 import { useHistory } from "../context/HistoryContext"; // Hook para acessar e salvar histórico global de consumo
+
 
 // ---------------------------
 // Constantes da tela
@@ -22,6 +25,8 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window"); // Pega a altura da 
 
 const MAX_WATER_LEVEL = 1; // Nível máximo do copo (cheio)
 const MIN_WATER_LEVEL = 0; // Nível mínimo do copo (vazio)
+const MAX_ML = 500; // Quantidade máxima em mL que o copo representa
+
 
 // ---------------------------
 // Componente principal da tela de consumo interativo
@@ -33,6 +38,10 @@ export default function Home() {
   const waterLevel = useRef(new Animated.Value(0.8)).current; // Valor animado para a altura da água
   const [currentLevel, setCurrentLevel] = useState(0.8); // Estado do nível atual da água
   const gestureStartLevel = useRef(0); // Para guardar o nível quando o usuário começa a arrastar
+
+  // Estados do modal de valor personalizado
+  const [isCustomModalVisible, setIsCustomModalVisible] = useState(false);
+  const [customAmount, setCustomAmount] = useState(String(Math.round(0.8 * MAX_ML)));
 
   // Configurações visuais
   const INSTANT_FILL_DURATION = 300; // Tempo para encher instantaneamente
@@ -95,7 +104,7 @@ export default function Home() {
       },
 
       onPanResponderMove: (_, g) => {
-        const sensitivity = 200; 
+        const sensitivity = 200;
         let newLevel = gestureStartLevel.current - g.dy / sensitivity; // Calcula novo nível com base no movimento vertical
         newLevel = Math.min(Math.max(newLevel, MIN_WATER_LEVEL), MAX_WATER_LEVEL); // Limita entre 0 e 1
         waterLevel.setValue(newLevel); // Atualiza animação
@@ -103,14 +112,15 @@ export default function Home() {
       },
 
       onPanResponderRelease: (_, g) => {
-        if (Math.abs(g.dy) < 5) { // Se só tocou sem arrastar
+        if (Math.abs(g.dy) < 5) {
+          // Se só tocou sem arrastar
           Animated.timing(waterLevel, {
             toValue: MAX_WATER_LEVEL, // Preenche o copo
             duration: INSTANT_FILL_DURATION,
             useNativeDriver: false,
           }).start(() => {
-            setCurrentLevel(MAX_WATER_LEVEL); 
-            addToHistory(Math.round(MAX_WATER_LEVEL * 500)); // Salva no histórico
+            setCurrentLevel(MAX_WATER_LEVEL);
+            addToHistory(Math.round(MAX_WATER_LEVEL * MAX_ML)); // Salva no histórico
           });
         }
       },
@@ -129,7 +139,7 @@ export default function Home() {
     outputRange: ["#4facfe", "#007AFF"],
   });
 
-  const waterAmount = Math.round(currentLevel * 500); // Quantidade de água em mL
+  const waterAmount = Math.round(currentLevel * MAX_ML); // Quantidade de água em mL
 
   // ---------------------------
   // Função para beber água
@@ -137,7 +147,7 @@ export default function Home() {
   const handleDrink = () => {
     Animated.timing(waterLevel, {
       toValue: 0, // Reduz para vazio
-      duration: 2000, 
+      duration: 2000,
       easing: Easing.ease,
       useNativeDriver: false,
     }).start(() => {
@@ -147,14 +157,44 @@ export default function Home() {
   };
 
   // ---------------------------
+  // Aplicar valor personalizado digitado
+  // ---------------------------
+  const handleApplyCustomAmount = () => {
+    const ml = Number(String(customAmount).replace(",", "."));
+    if (isNaN(ml) || ml <= 0) {
+      setIsCustomModalVisible(false);
+      return;
+    }
+    const clampedMl = Math.min(ml, MAX_ML);
+    const newLevel = clampedMl / MAX_ML;
+
+    Animated.timing(waterLevel, {
+      toValue: newLevel,
+      duration: 300,
+      useNativeDriver: false,
+    }).start(() => {
+      setCurrentLevel(newLevel);
+      setIsCustomModalVisible(false);
+    });
+  };
+
+  // ---------------------------
   // JSX da tela
   // ---------------------------
   return (
     <View style={styles.container}>
-      {/* Quantidade de água */}
-      <Animated.Text style={[styles.waterAmountText, { color: waterTextColor }]}>
-        {waterAmount} mL
-      </Animated.Text>
+      {/* Quantidade de água (tocável para valor personalizado) */}
+      <TouchableOpacity
+        onPress={() => {
+          setCustomAmount(String(waterAmount));
+          setIsCustomModalVisible(true);
+        }}
+        activeOpacity={0.7}
+      >
+        <Animated.Text style={[styles.waterAmountText, { color: waterTextColor }]}>
+          {waterAmount} mL
+        </Animated.Text>
+      </TouchableOpacity>
 
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
         {/* Régua lateral */}
@@ -216,6 +256,35 @@ export default function Home() {
           <Text style={styles.drinkText}>Beber</Text>
         </TouchableOpacity>
       </LinearGradient>
+
+      {/* Modal para valor personalizado */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isCustomModalVisible}
+        onRequestClose={() => setIsCustomModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Insirir manualmente (mL)</Text>
+            <TextInput
+              style={styles.modalInput}
+              keyboardType="numeric"
+              value={String(customAmount)}
+              onChangeText={setCustomAmount}
+              placeholder="Ex: 250"
+            />
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity onPress={() => setIsCustomModalVisible(false)}>
+                <Text style={styles.modalButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleApplyCustomAmount}>
+                <Text style={styles.modalButtonText}>Aplicar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -226,7 +295,8 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#E6F0FF", justifyContent: "center", alignItems: "center" }, // Container centralizado
   waterAmountText: { fontSize: 28, fontWeight: "bold", marginBottom: 15, textAlign: "center" }, // Texto da quantidade de água
-  cup: { // Estilo do copo
+  cup: {
+    // Estilo do copo
     overflow: "hidden",
     justifyContent: "flex-end",
     borderBottomLeftRadius: 8,
@@ -238,10 +308,61 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   water: { width: "100%", position: "absolute", bottom: 0 }, // Água dentro do copo
-  cupBorder: { ...StyleSheet.absoluteFillObject, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderWidth: 3, borderColor: "rgba(255,255,255,0.6)" }, // Borda do copo
-  topRim: { position: "absolute", top: 0, left: 0, right: 0, height: 18, backgroundColor: "rgba(255,255,255,0.25)", borderBottomWidth: 2, borderColor: "rgba(255,255,255,0.5)" }, // A borda de cima
+  cupBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.6)",
+  }, // Borda do copo
+  topRim: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 18,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderBottomWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
+  }, // A borda de cima
   drinkButton: { marginTop: 20, borderRadius: 25, paddingVertical: 12, paddingHorizontal: 40 }, // Botão de beber
   drinkText: { color: "white", fontSize: 18, fontWeight: "bold", textAlign: "center" }, // Texto do botão
   ruler: { marginRight: 10, height: 300, justifyContent: "space-between" }, // Régua lateral do copo
   rulerText: { fontSize: 14, fontWeight: "bold", color: "#555" }, // Texto da régua
+
+  // Estilos do modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 15,
+  },
+  modalButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    color: "#007AFF",
+    fontWeight: "bold",
+  },
 });
