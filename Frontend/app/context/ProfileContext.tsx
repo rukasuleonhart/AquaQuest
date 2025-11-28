@@ -23,6 +23,8 @@ type ProfileContextType = {
   dailyWaterTargetMl: number;
   waterPerMissionMl: number;
   extraMissionMl: number;
+  refreshProfile: () => Promise<void>;
+  updateProfileField: (field: keyof Profile, value: any) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextType>({
@@ -31,35 +33,63 @@ const ProfileContext = createContext<ProfileContextType>({
   dailyWaterTargetMl: 0,
   waterPerMissionMl: 0,
   extraMissionMl: 0,
+  refreshProfile: async () => {},
+  updateProfileField: async () => {},
 });
 
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async () => {
+    const res = await api.get("/perfil");
+    const data: Profile = {
+      id: res.data.id,
+      name: res.data.name,
+      activityTime: res.data.activity_time,
+      weightKg: res.data.weight_kg,
+      ambientTempC: res.data.ambient_temp_c,
+      level: res.data.level,
+      currentXP: res.data.current_xp,
+      xpToNext: res.data.xp_to_next,
+    };
+    setProfile(data);
+  };
+
   useEffect(() => {
-    const fetchProfile = async () => {
+    (async () => {
       try {
-        const res = await api.get("/perfil");
-        const data: Profile = {
-          id: res.data.id,
-          name: res.data.name,
-          activityTime: res.data.activity_time,
-          weightKg: res.data.weight_kg,
-          ambientTempC: res.data.ambient_temp_c,
-          level: res.data.level,
-          currentXP: res.data.current_xp,
-          xpToNext: res.data.xp_to_next,
-        };
-        setProfile(data);
+        await fetchProfile();
       } catch (err) {
         console.error("Erro ao carregar perfil:", err);
       } finally {
         setLoading(false);
       }
-    };
-    fetchProfile();
+    })();
   }, []);
+
+  const refreshProfile = async () => {
+    await fetchProfile();
+  };
+
+  const updateProfileField = async (field: keyof Profile, value: any) => {
+    const backendMap: Record<keyof Profile, string> = {
+      id: "id",
+      name: "name",
+      activityTime: "activity_time",
+      weightKg: "weight_kg",
+      ambientTempC: "ambient_temp_c",
+      level: "level",
+      currentXP: "current_xp",
+      xpToNext: "xp_to_next",
+    };
+
+    const payload: any = {};
+    payload[backendMap[field]] = value;
+
+    await api.patch("/perfil/", payload);
+    await refreshProfile();
+  };
 
   const dailyWaterTargetMl = profile
     ? Math.round(calculateDailyWaterTarget(profile.weightKg))
@@ -83,6 +113,8 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
         dailyWaterTargetMl,
         waterPerMissionMl,
         extraMissionMl,
+        refreshProfile,
+        updateProfileField,
       }}
     >
       {children}
