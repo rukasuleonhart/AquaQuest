@@ -1,6 +1,15 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useMemo, useState } from "react";
-import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Dimensions,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useHistory } from "../context/HistoryContext";
 import { useProfile } from "../context/ProfileContext";
 import { filterHistory } from "../utils/historyUtils";
@@ -25,6 +34,11 @@ export default function RPGQuestsScreen() {
   const { profile, waterPerMissionMl, extraMissionMl, addXP } = useProfile();
 
   const [rewardedQuests, setRewardedQuests] = useState<Set<string>>(new Set());
+
+  // estado do popup de XP
+  const [xpModalVisible, setXpModalVisible] = useState(false);
+  const [lastRewardedXP, setLastRewardedXP] = useState(0);
+  const [lastRewardedTitle, setLastRewardedTitle] = useState("");
 
   const quests: Quest[] = useMemo(() => {
     if (!profile) return [];
@@ -105,8 +119,6 @@ export default function RPGQuestsScreen() {
     const weeklyHistory = filterHistory(history, "Semanal");
     const monthlyHistory = filterHistory(history, "Mensal");
 
-    let consumedDaily = 0;
-
     return quests.map((q) => {
       const relevantHistory =
         q.type === "daily"
@@ -114,16 +126,32 @@ export default function RPGQuestsScreen() {
           : q.type === "weekly"
           ? weeklyHistory
           : monthlyHistory;
+
       const totalDrank = relevantHistory.reduce((sum, h) => sum + h.amount, 0);
 
       let progress = 0;
 
       if (q.unit === "mL") {
-        progress =
-          q.type === "daily"
-            ? Math.min(Math.max(totalDrank - consumedDaily, 0), q.target)
-            : Math.min(totalDrank, q.target);
-        if (q.type === "daily") consumedDaily += progress;
+        if (q.type === "daily") {
+          const quota = q.target; // waterPerMissionMl
+
+          const maxDailyTotal = quota * 3;
+          const clampedTotal = Math.min(totalDrank, maxDailyTotal);
+
+          const index =
+            q.id === "d1" ? 0 :
+            q.id === "d2" ? 1 :
+            q.id === "d3" ? 2 : 0;
+
+          const missionStart = quota * index;
+
+          progress = Math.min(
+            Math.max(clampedTotal - missionStart, 0),
+            quota
+          );
+        } else {
+          progress = Math.min(totalDrank, q.target);
+        }
       } else if (q.unit === "missions") {
         if (q.type === "weekly")
           progress = Math.min(
@@ -149,7 +177,7 @@ export default function RPGQuestsScreen() {
   const completedGradient = ["#4ADE80", "#22C55E"];
 
   const handleRewardQuest = async (quest: QuestWithProgress) => {
-    const completed = quest.progress >= quest.target;
+    const completed = quest.target > 0 && quest.progress >= quest.target;
     if (!completed) return;
 
     setRewardedQuests((prev) => {
@@ -159,16 +187,21 @@ export default function RPGQuestsScreen() {
       return clone;
     });
 
-    // mesmo se o set ainda não refletiu, chamar addXP é ok porque a checagem de duplicidade está no estado
     await addXP(quest.reward);
+
+    setLastRewardedXP(quest.reward);
+    setLastRewardedTitle(quest.title);
+    setXpModalVisible(true);
   };
 
   const renderQuest = (item: QuestWithProgress) => {
-    const completed = item.progress >= item.target;
-    const progressPercent = Math.min(
-      Math.round((item.progress / item.target) * 100),
-      100
-    );
+    const completed = item.target > 0 && item.progress >= item.target;
+
+    const progressPercent =
+      item.target > 0
+        ? Math.min(Math.round((item.progress / item.target) * 100), 100)
+        : 0;
+
     const alreadyRewarded = rewardedQuests.has(item.id);
 
     return (
@@ -204,7 +237,7 @@ export default function RPGQuestsScreen() {
           {item.progress.toFixed(0)}/{item.target.toFixed(0)}{" "}
           {item.unit === "missions" ? "missões" : "mL"}
         </Text>
-        {completed && (
+        {completed && item.target > 0 && (
           <TouchableOpacity
             onPress={() => handleRewardQuest(item)}
             disabled={alreadyRewarded}
@@ -238,34 +271,64 @@ export default function RPGQuestsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Missões</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.title}>Missões</Text>
 
-      {questsProgress.some((q) => q.id === "d_extra") &&
-        renderSection(
-          "Missão Extra (Exercício)",
-          questsProgress.filter((q) => q.id === "d_extra")
+        {questsProgress.some((q) => q.id === "d_extra") &&
+          renderSection(
+            "Missão Extra (Exercício)",
+            questsProgress.filter((q) => q.id === "d_extra")
+          )}
+
+        {renderSection(
+          "Diárias",
+          questsProgress.filter(
+            (q) => q.type === "daily" && q.id !== "d_extra"
+          )
         )}
+        {renderSection(
+          "Semanais",
+          questsProgress.filter((q) => q.type === "weekly")
+        )}
+        {renderSection(
+          "Mensais",
+          questsProgress.filter((q) => q.type === "monthly")
+        )}
+      </ScrollView>
 
-      {renderSection(
-        "Diárias",
-        questsProgress.filter(
-          (q) => q.type === "daily" && q.id !== "d_extra"
-        )
-      )}
-      {renderSection(
-        "Semanais",
-        questsProgress.filter((q) => q.type === "weekly")
-      )}
-      {renderSection(
-        "Mensais",
-        questsProgress.filter((q) => q.type === "monthly")
-      )}
+      <Modal
+        visible={xpModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setXpModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>XP Resgatado!</Text>
+            <Text style={styles.modalText}>
+              Você resgatou {lastRewardedXP} XP na missão:
+            </Text>
+            <Text style={styles.modalMissionTitle}>{lastRewardedTitle}</Text>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setXpModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingVertical: 20, backgroundColor: "#F5F9FF" },
+  container: { flex: 1, backgroundColor: "#F5F9FF" },
+  scrollContent: {
+    paddingVertical: 20,
+    paddingBottom: 40,
+  },
   title: {
     fontSize: 28,
     fontWeight: "bold",
@@ -291,6 +354,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 4,
+    marginBottom: 10,
   },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   icon: { fontSize: 32, marginRight: 12 },
@@ -317,5 +381,49 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginTop: 6,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalContainer: {
+    width: "80%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#16A34A",
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    color: "#374151",
+    textAlign: "center",
+  },
+  modalMissionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1E40AF",
+    textAlign: "center",
+    marginVertical: 10,
+  },
+  modalButton: {
+    marginTop: 12,
+    backgroundColor: "#16A34A",
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  modalButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
