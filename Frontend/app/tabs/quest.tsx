@@ -1,5 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -15,6 +16,7 @@ import { useProfile } from "../context/ProfileContext";
 import { filterHistory } from "../utils/historyUtils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const REWARDED_QUESTS_KEY = "@aq_rewarded_quests";
 
 type Quest = {
   id: string;
@@ -34,11 +36,33 @@ export default function RPGQuestsScreen() {
   const { profile, waterPerMissionMl, extraMissionMl, addXP } = useProfile();
 
   const [rewardedQuests, setRewardedQuests] = useState<Set<string>>(new Set());
-
-  // estado do popup de XP
   const [xpModalVisible, setXpModalVisible] = useState(false);
   const [lastRewardedXP, setLastRewardedXP] = useState(0);
   const [lastRewardedTitle, setLastRewardedTitle] = useState("");
+
+  useEffect(() => {
+    const loadRewarded = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(REWARDED_QUESTS_KEY);
+        if (stored) {
+          const parsed: string[] = JSON.parse(stored);
+          setRewardedQuests(new Set(parsed));
+        }
+      } catch (e) {
+        console.log("Erro ao carregar rewardedQuests", e);
+      }
+    };
+    loadRewarded();
+  }, []);
+
+  const saveRewarded = async (setData: Set<string>) => {
+    try {
+      const arr = Array.from(setData);
+      await AsyncStorage.setItem(REWARDED_QUESTS_KEY, JSON.stringify(arr));
+    } catch (e) {
+      console.log("Erro ao salvar rewardedQuests", e);
+    }
+  };
 
   const quests: Quest[] = useMemo(() => {
     if (!profile) return [];
@@ -119,40 +143,68 @@ export default function RPGQuestsScreen() {
     const weeklyHistory = filterHistory(history, "Semanal");
     const monthlyHistory = filterHistory(history, "Mensal");
 
+    const totalDrankDaily = dailyHistory.reduce((sum, h) => sum + h.amount, 0);
+    const dailyQuota = waterPerMissionMl;
+    const dailyTotalNeeded = dailyQuota * 3;
+
     return quests.map((q) => {
-      const relevantHistory =
-        q.type === "daily"
-          ? dailyHistory
-          : q.type === "weekly"
-          ? weeklyHistory
-          : monthlyHistory;
-
-      const totalDrank = relevantHistory.reduce((sum, h) => sum + h.amount, 0);
-
       let progress = 0;
 
       if (q.unit === "mL") {
         if (q.type === "daily") {
-          const quota = q.target; // waterPerMissionMl
+          if (q.id === "d1" || q.id === "d2" || q.id === "d3") {
+            const clampedDaily = Math.min(totalDrankDaily, dailyTotalNeeded);
+            const index = q.id === "d1" ? 0 : q.id === "d2" ? 1 : 2;
+            const missionStart = dailyQuota * index;
 
-          const maxDailyTotal = quota * 3;
-          const clampedTotal = Math.min(totalDrank, maxDailyTotal);
-
-          const index =
-            q.id === "d1" ? 0 :
-            q.id === "d2" ? 1 :
-            q.id === "d3" ? 2 : 0;
-
-          const missionStart = quota * index;
-
-          progress = Math.min(
-            Math.max(clampedTotal - missionStart, 0),
-            quota
-          );
+            progress = Math.min(
+              Math.max(clampedDaily - missionStart, 0),
+              dailyQuota
+            );
+          } else if (q.id === "d_extra") {
+            const extraAvailable = Math.max(
+              totalDrankDaily - dailyTotalNeeded,
+              0
+            );
+            progress = Math.min(extraAvailable, q.target);
+          } else if (q.id === "w1" || q.id === "m1") {
+            const relevantHistory =
+              q.type === "weekly"
+                ? weeklyHistory
+                : q.type === "monthly"
+                ? monthlyHistory
+                : dailyHistory;
+            const totalDrank = relevantHistory.reduce(
+              (sum, h) => sum + h.amount,
+              0
+            );
+            progress = Math.min(totalDrank, q.target);
+          }
         } else {
+          const relevantHistory =
+            q.type === "weekly"
+              ? weeklyHistory
+              : q.type === "monthly"
+              ? monthlyHistory
+              : dailyHistory;
+          const totalDrank = relevantHistory.reduce(
+            (sum, h) => sum + h.amount,
+            0
+          );
           progress = Math.min(totalDrank, q.target);
         }
       } else if (q.unit === "missions") {
+        const relevantHistory =
+          q.type === "weekly"
+            ? weeklyHistory
+            : q.type === "monthly"
+            ? monthlyHistory
+            : dailyHistory;
+        const totalDrank = relevantHistory.reduce(
+          (sum, h) => sum + h.amount,
+          0
+        );
+
         if (q.type === "weekly")
           progress = Math.min(
             Math.floor(totalDrank / waterPerMissionMl),
@@ -180,12 +232,22 @@ export default function RPGQuestsScreen() {
     const completed = quest.target > 0 && quest.progress >= quest.target;
     if (!completed) return;
 
+    let updated: Set<string> | undefined;
+
     setRewardedQuests((prev) => {
-      if (prev.has(quest.id)) return prev;
+      if (prev.has(quest.id)) {
+        updated = prev;
+        return prev;
+      }
       const clone = new Set(prev);
       clone.add(quest.id);
+      updated = clone;
       return clone;
     });
+
+    if (updated) {
+      await saveRewarded(updated);
+    }
 
     await addXP(quest.reward);
 
@@ -196,13 +258,12 @@ export default function RPGQuestsScreen() {
 
   const renderQuest = (item: QuestWithProgress) => {
     const completed = item.target > 0 && item.progress >= item.target;
+    const alreadyRewarded = rewardedQuests.has(item.id);
 
     const progressPercent =
       item.target > 0
         ? Math.min(Math.round((item.progress / item.target) * 100), 100)
         : 0;
-
-    const alreadyRewarded = rewardedQuests.has(item.id);
 
     return (
       <View
@@ -382,7 +443,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 6,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
