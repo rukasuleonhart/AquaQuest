@@ -37,6 +37,7 @@ type Achievement = {
   title: string;
   description: string;
   completed: boolean;
+  completedAt?: string; // nova propriedade opcional
 };
 
 type BackendFieldKeys =
@@ -99,17 +100,24 @@ export default function Perfil() {
     waterPerMissionMl,
     updateProfileField,
   } = useProfile();
+
+  const { hasFirstDrink } = useHistory();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [currentField, setCurrentField] = useState<BackendFieldKeys | null>(null);
   const [inputValue, setInputValue] = useState('');
 
-  const { hasFirstDrink } = useHistory();
   const [achievementPopupVisible, setAchievementPopupVisible] = useState(false);
   const hasFirstDrinkRef = useRef(hasFirstDrink);
 
-  // popup conquista
+  // novo estado para guardar a data da conquista "Primeiro Gole"
+  const [firstDrinkDate, setFirstDrinkDate] = useState<string | null>(null);
+
+  // popup conquista + registrar data/hora quando desbloqueia
   useEffect(() => {
     if (!hasFirstDrinkRef.current && hasFirstDrink) {
+      const now = new Date().toISOString();
+      setFirstDrinkDate(now);
       setAchievementPopupVisible(true);
     }
     hasFirstDrinkRef.current = hasFirstDrink;
@@ -194,10 +202,21 @@ export default function Perfil() {
     );
 
   const waterGoalMl = dailyWaterTargetMl;
+
   const achievements: Achievement[] = [
-    { id: '1', title: 'Primeiro Gole', description: 'Beba água uma vez', completed: hasFirstDrink },
-    { id: '2', title: 'Dia Produtivo', description: 'Complete todas as missões diárias', completed: false },
-    { id: '3', title: 'Resiliência', description: 'Beba água 30 dias consecutivos', completed: false },
+    {
+      id: '1',
+      title: 'Primeiro Gole',
+      description: 'Beba água uma vez',
+      completed: hasFirstDrink,
+      completedAt: firstDrinkDate || undefined,
+    },
+    {
+      id: '2',
+      title: 'Resiliência',
+      description: 'Beba água 30 dias consecutivos',
+      completed: false,
+    },
   ];
 
   return (
@@ -375,6 +394,20 @@ function XPBar({
   );
 }
 
+// função auxiliar para formatar data/hora em pt-BR
+function formatDate(dateStr?: string) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  // Exemplo: 28/11/2025 13:45
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
   return (
     <View style={styles.achievementContainer}>
@@ -395,6 +428,11 @@ function AchievementMenu({ achievements }: { achievements: Achievement[] }) {
             <View style={styles.achievementInfo}>
               <Text style={styles.achievementName}>{item.title}</Text>
               <Text style={styles.achievementDescription}>{item.description}</Text>
+              {item.completedAt && (
+                <Text style={styles.achievementDescription}>
+                  Conquistado em {formatDate(item.completedAt)}
+                </Text>
+              )}
             </View>
           </View>
         )}

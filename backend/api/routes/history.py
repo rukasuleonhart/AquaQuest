@@ -38,7 +38,6 @@ def criar_usuario(user_create: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_profile)
 
-    # NÃO cria mais histórico inicial com amount=0.0
     # O primeiro registro será criado no POST /historico
 
     return new_user

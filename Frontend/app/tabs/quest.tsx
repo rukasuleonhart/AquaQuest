@@ -16,7 +16,10 @@ import { useProfile } from "../context/ProfileContext";
 import { filterHistory } from "../utils/historyUtils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const REWARDED_QUESTS_KEY = "@aq_rewarded_quests";
+const REWARDED_QUESTS_KEY_BASE = "@aq_rewarded_quests";
+
+const getRewardedKey = (userId: string) =>
+  `${REWARDED_QUESTS_KEY_BASE}:${userId}`;
 
 type Quest = {
   id: string;
@@ -41,24 +44,32 @@ export default function RPGQuestsScreen() {
   const [lastRewardedTitle, setLastRewardedTitle] = useState("");
 
   useEffect(() => {
+    if (!profile) return;
+
     const loadRewarded = async () => {
       try {
-        const stored = await AsyncStorage.getItem(REWARDED_QUESTS_KEY);
+        const key = getRewardedKey(profile.id);
+        const stored = await AsyncStorage.getItem(key);
         if (stored) {
           const parsed: string[] = JSON.parse(stored);
           setRewardedQuests(new Set(parsed));
+        } else {
+          setRewardedQuests(new Set());
         }
       } catch (e) {
         console.log("Erro ao carregar rewardedQuests", e);
       }
     };
+
     loadRewarded();
-  }, []);
+  }, [profile]);
 
   const saveRewarded = async (setData: Set<string>) => {
+    if (!profile) return;
     try {
+      const key = getRewardedKey(profile.id);
       const arr = Array.from(setData);
-      await AsyncStorage.setItem(REWARDED_QUESTS_KEY, JSON.stringify(arr));
+      await AsyncStorage.setItem(key, JSON.stringify(arr));
     } catch (e) {
       console.log("Erro ao salvar rewardedQuests", e);
     }
@@ -124,7 +135,7 @@ export default function RPGQuestsScreen() {
       baseQuests.push({
         id: "d_extra",
         title: "Hidratação no Exercício",
-        description: `Beber ${extraMissionMl.toFixed(0)} mL durante/após o exercício`,
+        description: `Beber ${extraMissionMl.toFixed(0)} mL`,
         target: extraMissionMl,
         reward: 25,
         icon: "💪",
